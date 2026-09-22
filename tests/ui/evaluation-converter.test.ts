@@ -255,6 +255,26 @@ describe("Advanced mode: sections", () => {
     expect(headers.slice(6, 8)).toEqual(["ความพึงพอใจโดยรวม", "ข้อเสนอแนะ"]);
     expect(firstReply.slice(2, 7)).toEqual(["สมชาย", "ทดสอบ", "0001", "ATA", "5"]);
   });
+
+  it("keeps a section's comments off the report page when it opts out, as the company form does outside Part 4", () => {
+    const written = (header: string, answer: string) => ({ header, kind: "TEXT" as const, answers: [answer], average: null });
+    const report = {
+      course,
+      respondents: [{ timestamp: null, firstName: "a", lastName: "b", employeeCode: "1", companyCode: "ATA" }],
+      companies: [{ companyCode: "ATA", count: 1 }],
+      sections: [
+        { name: "Part 3 : x", questions: [written("hidden question", "hidden answer")], showComments: false },
+        { name: "Part 4 : y", questions: [written("shown question", "shown answer")], showComments: true },
+      ],
+    };
+    const entries = readXlsxEntries(buildSectionWorkbook(template, report));
+    const text = (name: string) => entries.find((entry) => entry.name === name)?.data.toString("utf8") ?? "";
+    const reportPage = text("xl/worksheets/sheet2.xml");
+    expect(reportPage).toContain("shown answer");
+    expect(reportPage).not.toContain("hidden answer");
+    // Every written answer still reaches the full comment sheet.
+    expect(text("xl/worksheets/sheet3.xml")).toContain("hidden answer");
+  });
 });
 
 describe("worksheet cell helper", () => {

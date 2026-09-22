@@ -12,6 +12,12 @@ import {
   type EvaluationSummaryQuestion,
   type EvaluationTimingStage,
 } from "../../../../lib/trainingForms/types";
+import {
+  COMPANY_FORM_COMMENT_GROUP,
+  COMPANY_FORM_GROUPS,
+  COMPANY_FORM_QUESTION_COUNT,
+  inSystemFitsCompanyForm,
+} from "../../../../lib/externalEvaluation/companyForm";
 import { isFormBlockType } from "../../../../lib/formBlocks";
 import { groupBySectionAverages } from "../../../../lib/trainingForms/sectionAverages";
 import { useUiLanguage } from "../../../ThaiUiLocalization";
@@ -447,6 +453,16 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
 
   const sectionGroups = useMemo(() => groupBySectionAverages(questions), [questions]);
 
+  /**
+   * "แบบฟอร์มสำหรับบริษัท": a form of the company form's fixed shape opens in it by itself - nothing
+   * to set up - and its export carries only Part 4's comments on the report page. HRD can still
+   * switch back to the normal view; any other form only has the normal one.
+   */
+  const companyFits = useMemo(() => inSystemFitsCompanyForm(sectionGroups), [sectionGroups]);
+  const [layoutChoice, setLayoutChoice] = useState<"normal" | "company" | null>(null);
+  const isCompanyLayout = companyFits && (layoutChoice ?? "company") === "company";
+  const showsComments = (groupIndex: number) => !isCompanyLayout || groupIndex === COMPANY_FORM_COMMENT_GROUP;
+
   /** The average bars of one section, kept in question order so a grid's rows stay together and the
    *  question's own chart can open under the last of them. */
   const averagesByQuestion = useMemo(
@@ -606,6 +622,30 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
                 </button>
               );
             })}
+            <span className={styles.filterDivider} />
+            <button
+              type="button"
+              className={isCompanyLayout ? styles.pill : styles.pillOn}
+              onClick={() => setLayoutChoice("normal")}
+            >
+              {t("มุมมองปกติ", "Normal view")}
+            </button>
+            <button
+              type="button"
+              disabled={!companyFits}
+              title={
+                companyFits
+                  ? undefined
+                  : t(
+                      `ใช้ได้กับฟอร์มที่มี ${COMPANY_FORM_QUESTION_COUNT} ข้อ แบ่ง Section เป็น ${COMPANY_FORM_GROUPS.map((group) => group.size).join("/")} เท่านั้น`,
+                      `Only for a form of ${COMPANY_FORM_QUESTION_COUNT} questions in sections of ${COMPANY_FORM_GROUPS.map((group) => group.size).join("/")}`,
+                    )
+              }
+              className={isCompanyLayout ? styles.pillOn : styles.pill}
+              onClick={() => setLayoutChoice("company")}
+            >
+              {t("แบบฟอร์มสำหรับบริษัท", "Company form")}
+            </button>
           </div>
 
           {!loaded ? (
@@ -662,6 +702,12 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
                       "1 การ์ดต่อ 1 Section · แท่งค่าเฉลี่ย: คำถามแบบคะแนน (เต็ม 5) และแต่ละแถวของตารางแบบเลือกข้อเดียว (เต็มตามจำนวนคอลัมน์)",
                       "One card per section. Average bars: rating questions (out of 5) and each row of a single-answer grid (out of its column count).",
                     )}
+                    {isCompanyLayout
+                      ? t(
+                          " · แบบฟอร์มสำหรับบริษัท: จัดกลุ่มตาม Section ของฟอร์มให้แล้ว ความคิดเห็นแสดงเฉพาะ Section สุดท้าย (Part 4) ทั้งบนหน้านี้และในรายงาน",
+                          " · Company form: grouped by the form's own sections; comments are shown for the last section (Part 4) only, here and in the report.",
+                        )
+                      : ""}
                   </p>
                   {sectionGroups.map((group, groupIndex) => (
                     <article key={`${group.name ?? ""}-${groupIndex}`} className={styles.questionCard}>
@@ -759,7 +805,7 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
                         </div>
                       ))}
 
-                      {group.texts.length > 0 ? (
+                      {group.texts.length > 0 && showsComments(groupIndex) ? (
                         <>
                           <p className={styles.sectionPart}>{t("ความคิดเห็น", "Comments")}</p>
                           {group.texts.map((question) => (
@@ -794,14 +840,16 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
                 header, which is the whole job. */}
             <a
               className={styles.insightAction}
-              href={`/api/training-plan/training-records/${planId}/evaluations/${shownTiming}/export?respondents=${respondents}`}
+              href={`/api/training-plan/training-records/${planId}/evaluations/${shownTiming}/export?respondents=${respondents}${isCompanyLayout ? "&layout=company" : ""}`}
               aria-disabled={!summary || summary.submittedCount === 0}
               onClick={(event) => {
                 if (!summary || summary.submittedCount === 0) event.preventDefault();
               }}
             >
               <FileSpreadsheet size={15} style={{ verticalAlign: "middle", marginRight: 6 }} />
-              {t("ดาวน์โหลดเป็น Excel ฟอร์มบริษัท", "Download as company-layout Excel")}
+              {isCompanyLayout
+                ? t("ดาวน์โหลด Excel แบบฟอร์มสำหรับบริษัท", "Download the company-form Excel")
+                : t("ดาวน์โหลดเป็น Excel ฟอร์มบริษัท", "Download as company-layout Excel")}
             </a>
           </div>
 

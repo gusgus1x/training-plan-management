@@ -191,57 +191,6 @@
   font-size: 0.8rem;
 }
 
-/* ---- Advanced guide ---- */
-
-.guide {
-  margin-top: 12px;
-  padding: 10px 14px;
-  border: 1px solid var(--ui-30-border);
-  border-radius: var(--ui-radius-md);
-  background: var(--ui-60-surface-soft);
-  color: var(--ui-30-text);
-  font-size: 0.875rem;
-  line-height: 1.55;
-}
-
-.guide summary {
-  cursor: pointer;
-  font-weight: 600;
-  color: var(--ui-30-primary-strong);
-}
-
-.guide ul {
-  margin: 4px 0 8px;
-  padding-left: 0;
-  list-style: none;
-}
-
-.guide li {
-  position: relative;
-  padding-left: 16px;
-}
-
-.guideSteps li::before {
-  content: "-";
-  position: absolute;
-  left: 2px;
-}
-
-/* Limits are what trips HRD up, so each carries a red asterisk. */
-.guideLimits li::before {
-  content: "*";
-  position: absolute;
-  left: 2px;
-  color: var(--ui-status-danger-text, #b91c1c);
-  font-weight: 700;
-}
-
-.guideHeading {
-  margin: 10px 0 0;
-  font-weight: 600;
-  color: var(--ui-30-ink);
-}
-
 /* ---- Sections ---- */
 
 .muted {
@@ -308,6 +257,67 @@
   background: var(--ui-status-pending-bg, rgba(245, 158, 11, 0.12));
   color: var(--ui-status-pending-text, #92400e);
   font-weight: 700;
+}
+
+div.warning {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+}
+
+div.warning p {
+  margin: 0;
+}
+
+/* ---- Company form guide ---- */
+
+.guide {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-text);
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+
+.guide summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--ui-30-primary-strong);
+}
+
+.guide ul {
+  margin: 4px 0 8px;
+  padding-left: 0;
+  list-style: none;
+}
+
+.guide li {
+  position: relative;
+  padding-left: 16px;
+}
+
+.guideSteps li::before {
+  content: "-";
+  position: absolute;
+  left: 2px;
+}
+
+/* Limits are what trips HRD up, so each carries a red asterisk. */
+.guideLimits li::before {
+  content: "*";
+  position: absolute;
+  left: 2px;
+  color: var(--ui-status-danger-text, #b91c1c);
+  font-weight: 700;
+}
+
+.guideHeading {
+  margin: 10px 0 0;
+  font-weight: 600;
+  color: var(--ui-30-ink);
 }
 
 .sectionTitle {

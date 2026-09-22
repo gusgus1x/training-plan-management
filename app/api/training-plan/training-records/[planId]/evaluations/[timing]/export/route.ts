@@ -4,7 +4,9 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createProtectedRoute, type ProtectedRouteOptions } from "../../../../../../../lib/auth/guard";
 import { buildSectionWorkbook } from "../../../../../../../lib/externalEvaluation/sectionWorkbook";
+import { inSystemFitsCompanyForm } from "../../../../../../../lib/externalEvaluation/companyForm";
 import { buildAdvancedReport } from "../../../../../../../lib/trainingForms/advancedReport";
+import { groupBySectionAverages } from "../../../../../../../lib/trainingForms/sectionAverages";
 import { trainingFormsService, type TrainingFormsService } from "../../../../../../../lib/trainingForms/service";
 import {
   parseEvaluationRespondentGroup,
@@ -49,7 +51,15 @@ export const createExportEvaluationSummaryHandler = (dependencies: Dependencies 
       );
     }
 
-    const workbook = buildSectionWorkbook(await readFile(COMPANY_TEMPLATE_PATH), buildAdvancedReport(summary, responses));
+    // "แบบฟอร์มสำหรับบริษัท" is asked for, but only honoured on a form of that shape: the
+    // screen's own check, repeated here because the query string is the caller's to write.
+    const companyForm =
+      request.nextUrl.searchParams.get("layout") === "company" &&
+      inSystemFitsCompanyForm(groupBySectionAverages(summary.questions));
+    const workbook = buildSectionWorkbook(
+      await readFile(COMPANY_TEMPLATE_PATH),
+      buildAdvancedReport(summary, responses, { companyForm }),
+    );
 
     const fileName = `Evaluation ${summary.course.courseName} ${summary.course.planCode}.xlsx`;
     const encodedFileName = encodeURIComponent(fileName);

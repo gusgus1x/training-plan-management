@@ -11,6 +11,11 @@ import {
   type SheetAnalysis,
 } from "../../../../lib/externalEvaluation/convert";
 import {
+  COMPANY_FORM_GROUPS,
+  COMPANY_FORM_QUESTION_COUNT,
+  companyFormGrouping,
+} from "../../../../lib/externalEvaluation/companyForm";
+import {
   buildSectionReport,
   type ReportSection,
   type SectionAssignment,
@@ -64,8 +69,16 @@ export default function EvaluationConverter() {
   const [busy, setBusy] = useState(false);
   const [sections, setSections] = useState<ReportSection[]>([]);
   const [assignment, setAssignment] = useState<SectionAssignment>({});
+  /** Normal: HRD groups everything. Company: the company form's fixed 19 questions, grouped for them. */
+  const [mode, setMode] = useState<"normal" | "company">("normal");
 
-  const addSection = () => setSections((current) => [...current, { id: `s-${Date.now()}`, name: "" }]);
+  // In the company form only Part 4's comments reach the report page, so a section HRD adds there
+  // stays off it too.
+  const addSection = () =>
+    setSections((current) => [
+      ...current,
+      { id: `s-${Date.now()}`, name: "", ...(mode === "company" ? { showComments: false } : {}) },
+    ]);
   const renameSection = (id: string, name: string) =>
     setSections((current) => current.map((section) => (section.id === id ? { ...section, name } : section)));
   const removeSection = (id: string) => {
@@ -125,15 +138,43 @@ export default function EvaluationConverter() {
       }),
     );
   }, [analysis]);
-  const questionCount = analysis?.columns.filter((column) => QUESTION_ROLES.includes(column.role)).length ?? 0;
+  const questionColumns = useMemo(
+    () => analysis?.columns.filter((column) => QUESTION_ROLES.includes(column.role)).map((column) => column.index) ?? [],
+    [analysis],
+  );
+  const questionCount = questionColumns.length;
+  const companyFits = questionCount === COMPANY_FORM_QUESTION_COUNT;
   const sectionReport = useMemo(
-    () => (analysis ? buildSectionReport(analysis, sections, assignment, course) : null),
-    [analysis, sections, assignment, course],
+    () =>
+      analysis
+        ? buildSectionReport(
+            analysis,
+            // The comment flag is the company form's; the normal mode shows every section's comments.
+            mode === "company" ? sections : sections.map(({ id, name }) => ({ id, name })),
+            assignment,
+            course,
+          )
+        : null,
+    [analysis, mode, sections, assignment, course],
   );
   const unassigned = analysis
     ? analysis.columns.filter((column) => QUESTION_ROLES.includes(column.role) && !sections.some((section) => section.id === assignment[column.index])).length
     : 0;
-  const canDownload = Boolean(sectionReport?.sections.length);
+  const canDownload = Boolean(sectionReport?.sections.length) && (mode === "normal" || companyFits);
+
+  /** Deals the question columns into the company form's five bands; false when they do not fit. */
+  const groupAsCompanyForm = (columnIndexes: number[]) => {
+    const grouping = companyFormGrouping(columnIndexes);
+    if (!grouping) return false;
+    setSections(grouping.sections);
+    setAssignment(grouping.assignment);
+    return true;
+  };
+
+  const switchMode = (next: "normal" | "company") => {
+    setMode(next);
+    if (next === "company") groupAsCompanyForm(questionColumns);
+  };
 
   const upload = async (file: File | null) => {
     if (!file) return;
@@ -150,10 +191,17 @@ export default function EvaluationConverter() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? t("อ่านไฟล์ไม่สำเร็จ", "Could not read the file"));
       setFileName(result.fileName);
-      setAnalysis(analyseSheet(result.rows));
-      // Every course has its own form, so the grouping always starts empty and is HRD's to make.
-      setSections([{ id: `s-${Date.now()}`, name: "" }]);
-      setAssignment({});
+      const next = analyseSheet(result.rows);
+      setAnalysis(next);
+      // The company form is grouped for HRD when the file has its shape. Otherwise every course has
+      // its own form, so the grouping starts empty and is HRD's to make.
+      const fitted =
+        mode === "company" &&
+        groupAsCompanyForm(next.columns.filter((column) => QUESTION_ROLES.includes(column.role)).map((column) => column.index));
+      if (!fitted) {
+        setSections([{ id: `s-${Date.now()}`, name: "", ...(mode === "company" ? { showComments: false } : {}) }]);
+        setAssignment({});
+      }
     } catch (cause) {
       setAnalysis(null);
       setError(cause instanceof Error ? cause.message : String(cause));
@@ -238,31 +286,47 @@ export default function EvaluationConverter() {
             ) : null}
           </header>
 
+          <div className={styles.modeSwitch} role="radiogroup" aria-label={t("โหมด", "Mode")}>
+            <button type="button" role="radio" aria-checked={mode === "normal"} onClick={() => switchMode("normal")}>
+              <strong>{t("โหมดปกติ", "Normal")}</strong>
+              <span>{t("แบบฟอร์มใดก็ได้ · กำหนด Section เอง", "Any form · you set the sections")}</span>
+            </button>
+            <button type="button" role="radio" aria-checked={mode === "company"} onClick={() => switchMode("company")}>
+              <strong>{t("แบบฟอร์มสำหรับบริษัท", "Company form")}</strong>
+              <span>
+                {t(
+                  `แบบฟอร์มบริษัท ${COMPANY_FORM_QUESTION_COUNT} ข้อ · ระบบจัด Section ให้`,
+                  `The company's ${COMPANY_FORM_QUESTION_COUNT}-question form · grouped for you`,
+                )}
+              </span>
+            </button>
+          </div>
 
+          {mode === "company" ? (
             <details className={styles.guide} open>
-              <summary>{t("วิธีใช้และข้อจำกัด", "How it works, and its limits")}</summary>
+              <summary>{t("วิธีใช้และข้อจำกัดที่ควรรู้", "How it works, and its limits")}</summary>
               <p className={styles.guideHeading}>{t("ขั้นตอน", "Steps")}</p>
               <ul className={styles.guideSteps}>
                 <li>{t("อัปโหลดไฟล์คำตอบ .xlsx หรือ .csv ที่ export จาก Microsoft Forms หรือ Google Forms", "Upload the .xlsx or .csv response export from Microsoft Forms or Google Forms.")}</li>
-                <li>{t("ตรวจช่อง \"ใช้เป็น\" ของทุกคอลัมน์ ระบบเดาให้แล้ว แต่ควรเช็กว่าคอลัมน์ชื่อ นามสกุล รหัสพนักงาน บริษัท และคำถามคะแนน 1-5 ถูกต้อง", "Check \"Use as\" for every column. It is guessed, but confirm name, surname, employee code, company and the 1-5 rating questions.")}</li>
-                <li>{t("ในข้อ 3 สร้าง Section และตั้งชื่อ เช่น \"Part 2 : ความพึงพอใจต่อวิทยากร\" ชื่อนี้จะเป็นหัวกราฟในไฟล์ Excel", "In step 3, add and name sections, e.g. \"Part 2 : Instructor\". The name becomes the chart title in Excel.")}</li>
-                <li>{t("กลับไปที่ตารางข้อ 2 แล้วเลือก Section ให้คำถามทีละข้อ ระบบไม่จัดให้อัตโนมัติ เพราะแต่ละคอร์สใช้แบบฟอร์มต่างกัน", "Back in the step 2 table, pick a section for each question. Nothing is grouped for you, because every course uses a different form.")}</li>
-                <li>{t("ดูตัวอย่างในข้อ 4 กรอกหัวรายงานด้านขวา แล้วกดดาวน์โหลด", "Check the preview in step 4, fill in the report header on the right, then download.")}</li>
+                <li>{t("ตรวจช่อง \"ใช้เป็น\" ให้คอลัมน์ ชื่อ นามสกุล รหัสพนักงาน บริษัท เป็นข้อมูลผู้ตอบ ไม่ใช่คำถาม", "Check \"Use as\": name, surname, employee code and company must be respondent columns, not questions.")}</li>
+                <li>{t("ถ้าคำถามครบ 19 ข้อ ระบบจัดเป็น 5 Section ให้ทันที ตรวจแล้วเขียนชื่อ Section ต่อท้าย เช่น \"Part 2 : ความพึงพอใจต่อวิทยากร\"", "With exactly 19 questions the five sections are filled in for you. Check them and complete each name, e.g. \"Part 2 : Instructor\".")}</li>
+                <li>{t("ย้ายคำถามไป Section อื่นได้ที่ตารางข้อ 2 แล้วกรอกหัวรายงานด้านขวา และกดดาวน์โหลด", "Move a question to another section in the step 2 table, fill in the report header on the right, then download.")}</li>
               </ul>
               <p className={styles.guideHeading}>{t("ข้อจำกัดที่ควรรู้", "Limits to know")}</p>
               <ul className={styles.guideLimits}>
-                <li>{t("คำถามที่ไม่ได้เลือก Section จะไม่อยู่ในไฟล์ Excel เลย", "A question with no section is left out of the workbook entirely.")}</li>
-                <li>{t("จำนวน Section และจำนวนคำถามไม่จำกัด กราฟจะสูงตามจำนวนข้อ และขึ้นหน้าใหม่เองเมื่อหน้าเต็ม", "No limit on sections or questions: a chart grows with its question count and moves to a new page when the page is full.")}</li>
-                <li>{t("คำถามประเภทคะแนน: 1 Section ได้ 1 กราฟ แต่ละแท่งคือค่าเฉลี่ยของคำถาม 1 ข้อ เต็มตามสเกลที่พบในไฟล์ (เช่น 5 หรือ 10) คำตอบที่ไม่ใช่ตัวเลขไม่นับในค่าเฉลี่ย", "Rating questions: one chart per section, one bar per question showing its average, out of the scale found in the file (5 or 10). Non-numeric answers are not averaged.")}</li>
-                <li>{t("คำถามประเภทข้อความ: หน้ารายงานแสดงข้อละ 5 คำตอบแรก ตัดที่ 90 ตัวอักษร ส่วนคำตอบทั้งหมดอยู่ในชีต 02-Comment", "Written questions: the report page shows the first 5 answers per question, cut at 90 characters. Every answer is on the 02-Comment sheet.")}</li>
-                <li>{t("คำถามแบบตัวเลือก: ได้กราฟโดนัทสัดส่วนคำตอบข้อละ 1 กราฟ", "Choice questions: one doughnut each, showing the answer split.")}</li>
-                <li>{t("คำถามแบบตาราง: ระบบรวมคอลัมน์ที่หัวคอลัมน์เป็นรูป \"คำถาม [ชื่อแถว]\" กลับเป็นตารางเดียว แล้ววาดเป็นกราฟแท่งต่อแถว", "Grid questions: columns headed \"question [row]\" are put back together as one grid and drawn as a bar per row.")}</li>
-                <li>{t("Section ที่มีแต่คำถามข้อความจะไม่มีกราฟ มีแค่ส่วนความคิดเห็น", "A section with only written questions gets no chart, only the comments block.")}</li>
-                <li>{t("ลำดับกราฟเป็นไปตามลำดับ Section ในข้อ 3 และลำดับคำถามใน Section เป็นไปตามลำดับคอลัมน์ในไฟล์", "Charts follow the section order in step 3; questions inside a section follow the file's column order.")}</li>
-                <li>{t("กราฟวงกลมนับตามคอลัมน์บริษัท", "The company doughnut counts the company column.")}</li>
-                <li>{t("ระบบไม่ได้บันทึกข้อมูลใดๆลงฐานข้อมูล", "Nothing is saved to the database.")}</li>
+                <li>
+                  {t(
+                    `ต้องมีคำถาม ${COMPANY_FORM_QUESTION_COUNT} ข้อพอดี เรียงตามตารางแปะข้อมูลของไฟล์บริษัท: ${COMPANY_FORM_GROUPS.map((group) => group.size).join(" / ")} ข้อ (Part 2 สามช่วง, Part 3, Part 4) ถ้าไม่ตรง ระบบจะเตือนและดาวน์โหลดไม่ได้ ให้ใช้โหมดปกติแทน`,
+                    `Exactly ${COMPANY_FORM_QUESTION_COUNT} questions, in the order of the company file's paste-in table: ${COMPANY_FORM_GROUPS.map((group) => group.size).join(" / ")} (Part 2 in three bands, Part 3, Part 4). Anything else is flagged and cannot be downloaded here; use the normal mode.`,
+                  )}
+                </li>
+                <li>{t("ระบบจัด Section ตามลำดับคอลัมน์ในไฟล์ ถ้าฟอร์มเรียงคำถามต่างจากนี้ ต้องย้ายเอง", "Sections follow the file's column order; a form in a different order has to be moved by hand.")}</li>
+                <li>{t("ความคิดเห็นในหน้ารายงานผลการอบรมแสดงเฉพาะ Part 4 (2 คำถาม) ความคิดเห็นของ Section อื่นยังอยู่ในชีต 02-Comment และ 01-Database", "The report page shows Part 4's comments only (2 questions); other sections' comments stay on 02-Comment and 01-Database.")}</li>
+                <li>{t("คำถามคะแนน: 1 Section ได้ 1 กราฟ แต่ละแท่งคือค่าเฉลี่ย คำตอบที่ไม่ใช่ตัวเลขไม่นับ", "Ratings: one chart per section, one average bar per question; non-numeric answers are not averaged.")}</li>
+                <li>{t("กราฟวงกลมนับตามคอลัมน์บริษัท · ระบบไม่บันทึกข้อมูลใด ๆ ลงฐานข้อมูล", "The company doughnut counts the company column. Nothing is saved to the database.")}</li>
               </ul>
             </details>
+          ) : null}
 
           <div className={styles.step}>
             <h2>1. {t("ไฟล์คำตอบ", "Response file")}</h2>
@@ -284,6 +348,19 @@ export default function EvaluationConverter() {
               />
             </label>
             {error ? <p className={styles.error} role="alert">{error}</p> : null}
+            {analysis && mode === "company" && !companyFits ? (
+              <div className={styles.warning} role="alert">
+                <p>
+                  {t(
+                    `ไฟล์นี้มีคำถาม ${questionCount} ข้อ แต่แบบฟอร์มสำหรับบริษัทต้องมี ${COMPANY_FORM_QUESTION_COUNT} ข้อ (${COMPANY_FORM_GROUPS.map((group) => group.size).join("/")}) ตรวจช่อง "ใช้เป็น" ในข้อ 2 ว่าคอลัมน์ชื่อ รหัส บริษัท ไม่ถูกนับเป็นคำถาม หรือใช้โหมดปกติ`,
+                    `This file has ${questionCount} questions; the company form needs ${COMPANY_FORM_QUESTION_COUNT} (${COMPANY_FORM_GROUPS.map((group) => group.size).join("/")}). Check "Use as" in step 2 so name, code and company are not counted as questions, or use the normal mode.`,
+                  )}
+                </p>
+                <button type="button" className={styles.linkButton} onClick={() => switchMode("normal")}>
+                  {t("ไปโหมดปกติ", "Switch to the normal mode")}
+                </button>
+              </div>
+            ) : null}
             {analysis ? (
               <p className={results.note}>
                 {SOURCE_LABELS[analysis.source]
@@ -374,7 +451,10 @@ export default function EvaluationConverter() {
                         placeholder={t("ชื่อ Section", "Section name")}
                         onChange={(event) => renameSection(section.id, event.target.value)}
                       />
-                      <span className={styles.muted}>{t(`${count} ข้อ`, `${count} questions`)}</span>
+                      <span className={styles.muted}>
+                        {t(`${count} ข้อ`, `${count} questions`)}
+                        {mode === "company" && section.showComments ? t(" · ความคิดเห็นแสดงในรายงาน", " · comments on the report") : ""}
+                      </span>
                       <button type="button" className={styles.linkButton} onClick={() => removeSection(section.id)}>
                         {t("ลบ", "Remove")}
                       </button>
@@ -386,6 +466,11 @@ export default function EvaluationConverter() {
                 <button type="button" className={styles.linkButton} onClick={addSection}>
                   + {t("เพิ่ม Section", "Add section")}
                 </button>
+                {mode === "company" && companyFits ? (
+                  <button type="button" className={styles.linkButton} onClick={() => groupAsCompanyForm(questionColumns)}>
+                    {t("จัด Section ตามแบบฟอร์มบริษัทอีกครั้ง", "Regroup as the company form")}
+                  </button>
+                ) : null}
               </div>
               {unassigned > 0 ? (
                 <p className={styles.warning} role="status">
@@ -423,7 +508,9 @@ export default function EvaluationConverter() {
                 <div className={styles.questionStack}>
                   {sectionReport.sections.map((section, sectionIndex) => {
                     const ratings = section.questions.filter((question) => question.kind === "RATING");
-                    const texts = section.questions.filter((question) => question.kind === "TEXT");
+                    // Same rule as the report page: the company form shows Part 4's comments only.
+                    const texts =
+                      section.showComments === false ? [] : section.questions.filter((question) => question.kind === "TEXT");
                     return (
                       <article key={sectionIndex} className={results.questionCard}>
                         <div className={results.questionHead}>

@@ -10,7 +10,9 @@ import { QUESTION_ROLES, splitChoices, type ResponseSource, type SheetAnalysis, 
  * HRD's to make. Pure, so the screen previews exactly what the workbook will hold.
  */
 
-export type ReportSection = { id: string; name: string };
+/** `showComments: false` keeps the section's written answers off the report page's comment block
+ *  (they stay on 02-Comment and 01-Database). Left out, they show - the normal mode's behaviour. */
+export type ReportSection = { id: string; name: string; showComments?: boolean };
 
 /** columnIndex -> section id. A question with no entry is left out of the report. */
 export type SectionAssignment = Record<number, string>;
@@ -47,7 +49,7 @@ export type SectionRespondent = {
 export type SectionReport = {
   course: EvaluationCourseHeader;
   respondents: SectionRespondent[];
-  sections: Array<{ name: string; questions: SectionQuestion[] }>;
+  sections: Array<{ name: string; questions: SectionQuestion[]; showComments?: boolean }>;
   /** Replies per company, largest first. */
   companies: Array<{ companyCode: string; count: number }>;
 };
@@ -211,7 +213,7 @@ export const buildSectionReport = (
         questions.push(gridQuestion(question, parts));
       }
 
-      return { name: section.name.trim() || "-", questions };
+      return { name: section.name.trim() || "-", questions, showComments: section.showComments };
     })
     .filter((section) => section.questions.length > 0);
 

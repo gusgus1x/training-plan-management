@@ -375,9 +375,11 @@ export const buildSectionWorkbook = (template: Buffer, report: SectionReport): B
     }
 
     // Written answers down the right-hand column, a few per question; the full set is on 02-Comment.
+    // The company form shows only its Part 4 here, so its other sections opt out.
     let commentRow = COMMENT_FIRST_ROW;
     const answerMerges: string[] = [];
     for (const section of report.sections) {
+      if (section.showComments === false) continue;
       const texts = section.questions.filter((question) => question.kind === "TEXT");
       if (!texts.length) continue;
       sheet = setRowHeight(setStyledCell(sheet, `BJ${commentRow}`, section.name, COMMENT_STYLE.section), commentRow, 30);

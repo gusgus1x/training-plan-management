@@ -1,3 +1,4 @@
+import { COMPANY_FORM_COMMENT_GROUP } from "../externalEvaluation/companyForm";
 import type { SectionQuestion, SectionReport, SectionRespondent } from "../externalEvaluation/sections";
 import { groupBySectionAverages } from "./sectionAverages";
 import type {
@@ -58,9 +59,14 @@ const gridChoiceFor = (response: EvaluationResponse, questionId: string, rowText
 const columnsOf = (question: EvaluationSummaryQuestion) =>
   (question.gridRows[0]?.cells ?? []).map((cell) => cell.columnText);
 
+/**
+ * `companyForm`: the form has the company form's shape (see externalEvaluation/companyForm), so the
+ * report page's comment block carries Part 4 only. The caller checks the shape; this only lays out.
+ */
 export const buildAdvancedReport = (
   summary: EvaluationSummary,
   responses: EvaluationResponseList,
+  options: { companyForm?: boolean } = {},
 ): SectionReport => {
   const replies = responses.responses;
 
@@ -86,7 +92,7 @@ export const buildAdvancedReport = (
     outOf,
   });
 
-  const sections = groupBySectionAverages(summary.questions).map((group) => {
+  const sections = groupBySectionAverages(summary.questions).map((group, groupIndex) => {
     const questions: SectionQuestion[] = [];
 
     for (const item of group.averages) {
@@ -166,7 +172,11 @@ export const buildAdvancedReport = (
       });
     }
 
-    return { name: group.name ?? summary.formName, questions };
+    return {
+      name: group.name ?? summary.formName,
+      questions,
+      ...(options.companyForm ? { showComments: groupIndex === COMPANY_FORM_COMMENT_GROUP } : {}),
+    };
   });
 
   return {
