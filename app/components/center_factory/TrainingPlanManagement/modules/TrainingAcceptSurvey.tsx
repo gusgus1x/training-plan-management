@@ -318,31 +318,102 @@ function PaginatedEmployeeGrid({
   const isThai = language === "th";
   const effectiveEmptyMessage = emptyMessage ?? (isThai ? "ไม่มีรายชื่อพนักงานสำหรับบริษัทนี้" : "No employee records for this company");
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedDepartment, setSelectedDepartment] = useState("");
+  const [selectedHistoryStatus, setSelectedHistoryStatus] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+
+  const departmentOptions = useMemo(() => {
+    const set = new Set<string>();
+    employees.forEach((emp) => {
+      const dept = emp.department?.trim();
+      if (dept && dept !== "-") {
+        set.add(dept);
+      }
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "th"));
+  }, [employees]);
 
   const filteredEmployees = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return employees;
     return employees.filter((emp) => {
-      const nameProfile = getEmployeeNameProfile(emp);
-      const text = [
-        emp.employeeCode,
-        nameProfile.prefix,
-        nameProfile.firstName,
-        nameProfile.lastName,
-        emp.company,
-        emp.section,
-        emp.division,
-        emp.department,
-        emp.position,
-        emp.level,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      return text.includes(q);
+      // 1. Department Filter
+      if (selectedDepartment) {
+        const dept = emp.department?.trim();
+        if (dept !== selectedDepartment) return false;
+      }
+
+      // 2. Training History & Status Filter
+      if (selectedHistoryStatus) {
+        const priorHistory =
+          courseHistoryMap.get(emp.id) ||
+          (emp.employeeCode ? courseHistoryMap.get(emp.employeeCode) : undefined);
+
+        const isDraft = draftSubmittedEmployees.some(
+          (d) =>
+            (emp.id && d.id === emp.id) ||
+            (emp.employeeCode && d.employeeCode && d.employeeCode === emp.employeeCode),
+        );
+
+        const enrollment = enrollments.find(
+          (c) =>
+            ((emp.id && c.employeeId === emp.id) ||
+              (emp.employeeCode && c.employeeCode && c.employeeCode === emp.employeeCode)) &&
+            c.status !== "Rejected" &&
+            c.status !== "Cancelled",
+        ) || enrollments.find(
+          (c) =>
+            (emp.id && c.employeeId === emp.id) ||
+            (emp.employeeCode && c.employeeCode && c.employeeCode === emp.employeeCode),
+        );
+
+        if (selectedHistoryStatus === "trained_prior") {
+          if (!priorHistory) return false;
+        } else if (selectedHistoryStatus === "not_trained") {
+          if (priorHistory || enrollment || isDraft) return false;
+        } else if (selectedHistoryStatus === "draft") {
+          if (!isDraft) return false;
+        } else if (selectedHistoryStatus === "pending") {
+          if (enrollment?.status !== "Pending Approval") return false;
+        } else if (selectedHistoryStatus === "approved") {
+          if (enrollment?.status !== "Factory Approved" && enrollment?.status !== "Center Approved") return false;
+        } else if (selectedHistoryStatus === "rejected") {
+          if (enrollment?.status !== "Rejected") return false;
+        }
+      }
+
+      // 3. Search Query
+      if (q) {
+        const nameProfile = getEmployeeNameProfile(emp);
+        const text = [
+          emp.employeeCode,
+          nameProfile.prefix,
+          nameProfile.firstName,
+          nameProfile.lastName,
+          emp.company,
+          emp.section,
+          emp.division,
+          emp.department,
+          emp.position,
+          emp.level,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        if (!text.includes(q)) return false;
+      }
+
+      return true;
     });
-  }, [employees, searchQuery]);
+  }, [employees, selectedDepartment, selectedHistoryStatus, searchQuery, courseHistoryMap, draftSubmittedEmployees, enrollments]);
+
+  const isAnyFilterActive = Boolean(searchQuery || selectedDepartment || selectedHistoryStatus);
+
+  const handleResetFilters = () => {
+    setSearchQuery("");
+    setSelectedDepartment("");
+    setSelectedHistoryStatus("");
+    setCurrentPage(1);
+  };
 
   const totalPages = Math.max(1, Math.ceil(filteredEmployees.length / pageSize));
   const activePage = Math.min(currentPage, totalPages);
@@ -377,33 +448,116 @@ function PaginatedEmployeeGrid({
   return (
     <div className={styles.paginatedContainer}>
       <div className={styles.dropdownToolbar}>
-        <div className={styles.dropdownSearchWrap}>
-          <input
-            className={styles.dropdownSearchInput}
-            type="text"
-            placeholder={isThai ? "ค้นหาพนักงาน (รหัส, ชื่อ-สกุล, แผนก, ตำแหน่ง)..." : "Search employees (Code, Name, Dept, Position)..."}
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              setCurrentPage(1);
-            }}
-          />
-          {searchQuery ? (
-            <button
-              className={styles.dropdownSearchClear}
-              type="button"
-              onClick={() => {
-                setSearchQuery("");
+        <div className={styles.dropdownFiltersWrap}>
+          {/* Department Filter Dropdown */}
+          <div className={styles.filterControlGroup}>
+            <label className={styles.filterControlLabel} htmlFor="filter-dept">
+              {isThai ? "แผนก:" : "Dept:"}
+            </label>
+            <select
+              id="filter-dept"
+              className={`${styles.dropdownFilterSelect} ${selectedDepartment ? styles.activeFilterSelect : ""}`}
+              value={selectedDepartment}
+              onChange={(e) => {
+                setSelectedDepartment(e.target.value);
                 setCurrentPage(1);
               }}
-              title={isThai ? "ล้างคำค้นหา" : "Clear search"}
-            ><X size={14} /></button>
-          ) : null}
+              title={isThai ? "เลือกกรองตามแผนก" : "Filter by Department"}
+            >
+              <option value="">{isThai ? "— ทุกแผนก —" : "— All Depts —"}</option>
+              {departmentOptions.map((dept) => (
+                <option key={dept} value={dept}>
+                  {dept}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* History / Status Filter Dropdown */}
+          <div className={styles.filterControlGroup}>
+            <label className={styles.filterControlLabel} htmlFor="filter-status">
+              {isThai ? "ประวัติ / สถานะ:" : "History / Status:"}
+            </label>
+            <select
+              id="filter-status"
+              className={`${styles.dropdownFilterSelect} ${selectedHistoryStatus ? styles.activeFilterSelect : ""}`}
+              value={selectedHistoryStatus}
+              onChange={(e) => {
+                setSelectedHistoryStatus(e.target.value);
+                setCurrentPage(1);
+              }}
+              title={isThai ? "กรองตามประวัติการอบรมหรือสถานะการลงทะเบียน" : "Filter by Training History / Status"}
+            >
+              <option value="">{isThai ? "— ทุกสถานะ —" : "— All Statuses —"}</option>
+              <option value="trained_prior">
+                {isThai ? "🟣 เคยผ่านการอบรมแล้ว (มีประวัติ)" : "🟣 Completed Prior Training"}
+              </option>
+              <option value="not_trained">
+                {isThai ? "⚪ ยังไม่เคยอบรม (ยังไม่ลงทะเบียน)" : "⚪ Not Enrolled / Available"}
+              </option>
+              <option value="pending">
+                {isThai ? "🔵 รออนุมัติ (Pending)" : "🔵 Pending Approval"}
+              </option>
+              <option value="approved">
+                {isThai ? "🟢 อนุมัติแล้ว (Approved)" : "🟢 Approved"}
+              </option>
+              <option value="draft">
+                {isThai ? "🟡 อยู่ในดราฟ (In Draft)" : "🟡 In Draft"}
+              </option>
+              <option value="rejected">
+                {isThai ? "🔴 ถูกปฏิเสธ (Rejected)" : "🔴 Rejected"}
+              </option>
+            </select>
+          </div>
+
+          {/* Text Search Input */}
+          <div className={styles.dropdownSearchWrap}>
+            <span className={styles.searchIconInline} aria-hidden="true">
+              <Search size={15} />
+            </span>
+            <input
+              className={styles.dropdownSearchInput}
+              type="text"
+              placeholder={isThai ? "ค้นหารหัส, ชื่อ-สกุล, ตำแหน่ง..." : "Search Code, Name, Position..."}
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
+            />
+            {searchQuery ? (
+              <button
+                className={styles.dropdownSearchClear}
+                type="button"
+                onClick={() => {
+                  setSearchQuery("");
+                  setCurrentPage(1);
+                }}
+                title={isThai ? "ล้างคำค้นหา" : "Clear search"}
+              ><X size={14} /></button>
+            ) : null}
+          </div>
+
+          {/* Reset Filters Button */}
+          {isAnyFilterActive && (
+            <button
+              className={styles.resetFiltersBtn}
+              type="button"
+              onClick={handleResetFilters}
+              title={isThai ? "ล้างตัวกรองทั้งหมด" : "Reset all filters"}
+            >
+              <X size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 3 }} />
+              {isThai ? "ล้างตัวกรอง" : "Clear Filters"}
+            </button>
+          )}
         </div>
+
         <span className={styles.dropdownSearchCount}>
           {filteredEmployees.length === 0
-            ? "ไม่พบพนักงาน"
-            : `แสดง ${startIndex + 1}-${Math.min(startIndex + pageSize, filteredEmployees.length)} จากทั้งหมด ${filteredEmployees.length} คน`}
+            ? (isThai ? "ไม่พบพนักงานที่ตรงเงื่อนไข" : "No matching employees")
+            : isThai
+              ? `แสดง ${startIndex + 1}-${Math.min(startIndex + pageSize, filteredEmployees.length)} จากผลกรอง ${filteredEmployees.length} คน (ทั้งหมด ${employees.length} คน)`
+              : `Showing ${startIndex + 1}-${Math.min(startIndex + pageSize, filteredEmployees.length)} of ${filteredEmployees.length} matches (${employees.length} total)`}
         </span>
       </div>
 
