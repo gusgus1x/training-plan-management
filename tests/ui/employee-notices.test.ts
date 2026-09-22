@@ -9,6 +9,7 @@ import {
   stampFirstSeen,
   unreadCount,
 } from "../../app/components/employee/employeeNotices";
+import { storedHref } from "../../app/components/employee/useStoredNotifications";
 import { emptyEnrollmentStage, type EnrollmentRecord } from "../../app/lib/trainingEnrollment/types";
 
 const HOUR = 3_600_000;
@@ -66,47 +67,49 @@ const openPostTest = { ...emptyEnrollmentStage, mode: "FORM" as const, availabil
 const certificate = { certificateFileId: "c9", issuedAt: "2026-09-10T00:00:00.000Z" } as EnrollmentRecord["certificate"];
 
 describe("which notices an employee gets", () => {
-  it("raises a certificate notice and a forms notice pointing at the completed tab", () => {
-    const notices = buildEmployeeNotices([enrollment({ certificate }, openPostTest)], new Date(T0));
-    expect(notices.map((notice) => notice.id)).toEqual(["certificate:c9", "forms:e1:post"]);
-    expect(notices.every((notice) => notice.tab === "completed")).toBe(true);
-    expect(noticeHref(notices[1], 5)).toBe("/?module=record&tab=completed&focus=e1&at=5");
+  it("raises a forms notice pointing at the completed tab", () => {
+    const notices = buildEmployeeNotices([enrollment({}, openPostTest)], undefined, undefined, new Date(T0));
+    expect(notices.map((notice) => notice.id)).toEqual(["forms:e1:post"]);
+    expect(noticeHref(notices[0], 5)).toBe("/?module=record&tab=completed&focus=e1&at=5");
+  });
+
+  it("leaves a certificate to the notification table, which is told when HRD issues it", () => {
+    expect(buildEmployeeNotices([enrollment({ certificate })], undefined, undefined, new Date(T0))).toEqual([]);
   });
 
   it("says nothing about forms on a course still waiting for approval", () => {
     const pending = enrollment({ status: "Pending Approval", attendance: null }, openPostTest);
-    expect(buildEmployeeNotices([pending], new Date(T0))).toEqual([]);
+    expect(buildEmployeeNotices([pending], undefined, undefined, new Date(T0))).toEqual([]);
   });
 
   it("raises enrollment_approval notice for pending team enrollments awaiting approver", () => {
     const pendingEnr = enrollment({ id: "enr-999", status: "Pending Approval" });
-    const notices = buildEmployeeNotices([], undefined, [pendingEnr], undefined, new Date(T0));
+    const notices = buildEmployeeNotices([], undefined, [pendingEnr], new Date(T0));
     expect(notices).toHaveLength(1);
     expect(notices[0].id).toBe("enrollment_approval:enr-999");
     expect(notices[0].kind).toBe("enrollment_approval");
     expect(noticeHref(notices[0], 100)).toBe("/?module=register&focusApproval=enr-999&at=100");
   });
 
-  it("raises system_notification notice for direct notifications", () => {
-    const notif = {
+  // Rows of the notification table are read by useStoredNotifications, not listed here, and land
+  // on the thing they are about.
+  it("sends a stored enrollment decision to the course in My Record", () => {
+    const row = {
       notificationId: "notif-1",
       userId: "10",
       title: "Test Alert",
       message: "Test message",
-      relatedType: "TRAINING_ENROLLMENT",
+      relatedType: "ENROLLMENT_REJECTED",
       relatedId: "123",
       isRead: false,
       createdAt: new Date().toISOString(),
     };
-    const notices = buildEmployeeNotices([], undefined, undefined, [notif], new Date(T0));
-    expect(notices).toHaveLength(1);
-    expect(notices[0].id).toBe("system_notification:notif-1");
-    expect(noticeHref(notices[0], 200)).toBe("/?module=register&at=200");
+    expect(storedHref(row, 200)).toBe("/?module=record&tab=pending&focus=123&at=200");
   });
 });
 
 describe("dashboard card lifetime", () => {
-  const [notice] = buildEmployeeNotices([enrollment({ certificate })], new Date(T0));
+  const [notice] = buildEmployeeNotices([enrollment({}, openPostTest)], undefined, undefined, new Date(T0));
   const seen = stampFirstSeen({}, [notice], T0);
 
   it("shows for three days from first sight, then retires", () => {
@@ -132,7 +135,12 @@ describe("dashboard card lifetime", () => {
 
 describe("bell count", () => {
   it("counts notices not yet looked at in the bell, and clears on open without hiding them", () => {
-    const notices = buildEmployeeNotices([enrollment({ certificate }, openPostTest)], new Date(T0));
+    const notices = buildEmployeeNotices(
+      [enrollment({}, openPostTest), enrollment({ id: "e2" }, openPostTest)],
+      undefined,
+      undefined,
+      new Date(T0),
+    );
     const dismissed = markDismissed({}, notices[0].id, T0);
     expect(unreadCount(notices, dismissed)).toBe(2);
     const opened = markSeenInBell(dismissed, notices, T0);

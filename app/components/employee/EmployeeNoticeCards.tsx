@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { certificateFileUrl } from "../../lib/certificates/client";
+import type { NotificationRecord } from "../../lib/notifications/types";
 import type { EnrollmentRecord } from "../../lib/trainingEnrollment/types";
 import { useUiLanguage } from "../ThaiUiLocalization";
-import { Award, Bell, CheckCircle2, ChevronRight, ClipboardList, FileText, X, XCircle } from "../icons/LucideIcons";
+import { Bell, ChevronRight, ClipboardList, FileText, X } from "../icons/LucideIcons";
 import {
   isShownOnDashboard,
   markDismissed,
@@ -15,45 +16,18 @@ import {
   type EmployeeNotice,
 } from "./employeeNotices";
 import { useEmployeeNotices } from "./useEmployeeNotices";
+import { storedHref, storedIcon, useStoredNotifications } from "./useStoredNotifications";
 import styles from "./EmployeeNoticeCards.module.css";
 
-const renderCardIcon = (kind: EmployeeNotice["kind"]) => {
+const renderCardIcon = (kind: EmployeeNotice["kind"], size: number) => {
   switch (kind) {
     case "enrollment_approval":
-      return <FileText size={22} style={{ color: "var(--ui-30-primary, #007a3d)" }} />;
-    case "system_notification":
-      return <Bell size={22} style={{ color: "#3b82f6" }} />;
+      return <FileText size={size} style={{ color: "var(--ui-30-primary, #007a3d)" }} />;
     case "record_request_approval":
-      return <FileText size={22} style={{ color: "#3b82f6" }} />;
-    case "record_request_approved":
-      return <CheckCircle2 size={22} style={{ color: "#10b981" }} />;
-    case "record_request_rejected":
-      return <XCircle size={22} style={{ color: "#ef4444" }} />;
-    case "certificate":
-      return <Award size={22} />;
+      return <FileText size={size} style={{ color: "#3b82f6" }} />;
     case "forms":
     default:
-      return <ClipboardList size={22} />;
-  }
-};
-
-const renderEyebrowIcon = (kind: EmployeeNotice["kind"]) => {
-  switch (kind) {
-    case "enrollment_approval":
-      return <FileText size={14} />;
-    case "system_notification":
-      return <Bell size={14} />;
-    case "record_request_approval":
-      return <FileText size={14} />;
-    case "record_request_approved":
-      return <CheckCircle2 size={14} />;
-    case "record_request_rejected":
-      return <XCircle size={14} />;
-    case "certificate":
-      return <Award size={14} />;
-    case "forms":
-    default:
-      return <ClipboardList size={14} />;
+      return <ClipboardList size={size} />;
   }
 };
 
@@ -76,18 +50,25 @@ export default function EmployeeNoticeCards({ enrollments }: { enrollments: Enro
   const isThai = language === "th";
   const t = (th: string, en: string) => (isThai ? th : en);
   const { notices, state, update, userKey } = useEmployeeNotices(enrollments);
+  const { rows, markRead } = useStoredNotifications();
   // Read once per mount: a card expiring mid-visit can wait for the next page load.
   const [now] = useState(Date.now);
   // Keyed by employee, so a different login never inherits someone else's "closed".
   const [closedFor, setClosedFor] = useState<string | null>(null);
   const [neverAgain, setNeverAgain] = useState(false);
   const visible = notices.filter((notice) => isShownOnDashboard(state[notice.id], now));
+  // News stays on the dashboard until it has been read, here or in the bell, on any device.
+  const unreadStored = rows.filter((row) => !row.isRead);
+  const count = visible.length + unreadStored.length;
   const popupClosed = !userKey || closedFor === userKey || popupAlreadyShown(userKey);
-  const popupOpen = !popupClosed && visible.length > 0;
+  const popupOpen = !popupClosed && count > 0;
 
   const closePopup = () => {
     // "Don't show again" covers what the popup was showing; the cards below go with it.
-    if (neverAgain) update((current) => visible.reduce((next, notice) => markDismissed(next, notice.id), current));
+    if (neverAgain) {
+      update((current) => visible.reduce((next, notice) => markDismissed(next, notice.id), current));
+      if (unreadStored.length) markRead(unreadStored.map((row) => row.notificationId));
+    }
     try {
       if (userKey) window.sessionStorage.setItem(popupSessionKey(userKey), "1");
     } catch {
@@ -105,7 +86,7 @@ export default function EmployeeNoticeCards({ enrollments }: { enrollments: Enro
     return () => document.removeEventListener("keydown", onKey);
   });
 
-  if (!visible.length) return null;
+  if (!count) return null;
 
   const open = (notice: EmployeeNotice) => {
     // Opening it is reading it.
@@ -114,24 +95,64 @@ export default function EmployeeNoticeCards({ enrollments }: { enrollments: Enro
     router.push(noticeHref(notice));
   };
 
+  const openStored = (row: NotificationRecord) => {
+    markRead([row.notificationId]);
+    setClosedFor(userKey);
+    const href = storedHref(row);
+    if (href) router.push(href);
+  };
+
+  const closeLabel = t("ปิด (แสดงอีกครั้งพรุ่งนี้)", "Close (shows again tomorrow)");
+  const readLabel = t("ปิด (อ่านแล้ว)", "Close (mark as read)");
+
+  const renderStoredCard = (row: NotificationRecord, withClose: boolean) => (
+    <article key={`stored:${row.notificationId}`} className={styles.card} data-kind="stored">
+      <button type="button" className={styles.main} onClick={() => openStored(row)}>
+        {row.relatedType === "CERTIFICATE_ISSUED" && row.relatedId ? (
+          <span className={styles.thumb} aria-hidden="true">
+            {/* The real PDF scaled down; the button owns the click, so the frame ignores it. */}
+            <iframe src={certificateFileUrl(row.relatedId)} title={row.title} tabIndex={-1} />
+          </span>
+        ) : (
+          <span className={styles.icon} aria-hidden="true">
+            {storedIcon(row.relatedType, 22)}
+          </span>
+        )}
+        <span className={styles.body}>
+          <span className={styles.eyebrow}>
+            {storedIcon(row.relatedType, 14)}
+            {new Date(row.createdAt).toLocaleString(isThai ? "th-TH" : "en-GB", {
+              day: "numeric",
+              month: "short",
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </span>
+          <strong className={styles.title}>{row.title}</strong>
+          <span className={styles.detail}>{row.message}</span>
+        </span>
+        <ChevronRight className={styles.chevron} size={20} aria-hidden="true" />
+      </button>
+      {withClose ? (
+        // News has no "tomorrow": closing it is reading it.
+        <button type="button" className={styles.close} onClick={() => markRead([row.notificationId])} aria-label={readLabel} title={readLabel}>
+          <X size={16} />
+        </button>
+      ) : null}
+    </article>
+  );
+
   const renderCard = (notice: EmployeeNotice, withClose: boolean) => {
     const text = noticeText(notice, isThai);
     return (
       <article key={notice.id} className={styles.card} data-kind={notice.kind}>
         <button type="button" className={styles.main} onClick={() => open(notice)}>
-          {notice.kind === "certificate" ? (
-            <span className={styles.thumb} aria-hidden="true">
-              {/* The real PDF scaled down; the button owns the click, so the frame ignores it. */}
-              <iframe src={certificateFileUrl(notice.certificateFileId)} title={notice.courseName} tabIndex={-1} />
-            </span>
-          ) : (
-            <span className={styles.icon} aria-hidden="true">
-              {renderCardIcon(notice.kind)}
-            </span>
-          )}
+          <span className={styles.icon} aria-hidden="true">
+            {renderCardIcon(notice.kind, 22)}
+          </span>
           <span className={styles.body}>
             <span className={styles.eyebrow}>
-              {renderEyebrowIcon(notice.kind)}
+              {renderCardIcon(notice.kind, 14)}
               {text.eyebrow}
             </span>
             <strong className={styles.title}>{text.title}</strong>
@@ -144,8 +165,8 @@ export default function EmployeeNoticeCards({ enrollments }: { enrollments: Enro
             type="button"
             className={styles.close}
             onClick={() => update((current) => markSnoozed(current, notice.id))}
-            aria-label={t("ปิด (แสดงอีกครั้งพรุ่งนี้)", "Close (shows again tomorrow)")}
-            title={t("ปิด (แสดงอีกครั้งพรุ่งนี้)", "Close (shows again tomorrow)")}
+            aria-label={closeLabel}
+            title={closeLabel}
           >
             <X size={16} />
           </button>
@@ -157,6 +178,7 @@ export default function EmployeeNoticeCards({ enrollments }: { enrollments: Enro
   return (
     <>
       <section className={styles.stack} aria-label={t("การแจ้งเตือน", "Notifications")}>
+        {unreadStored.map((row) => renderStoredCard(row, true))}
         {visible.map((notice) => renderCard(notice, true))}
       </section>
 
@@ -175,10 +197,13 @@ export default function EmployeeNoticeCards({ enrollments }: { enrollments: Enro
               </span>
               <div>
                 <h2 id="employee-notice-popup-title">{t("มีข้อมูลใหม่สำหรับคุณ", "Something new for you")}</h2>
-                <p>{t(`${visible.length} รายการ · กดที่รายการเพื่อดูรายละเอียด`, `${visible.length} items · tap one to see it`)}</p>
+                <p>{t(`${count} รายการ · กดที่รายการเพื่อดูรายละเอียด`, `${count} items · tap one to see it`)}</p>
               </div>
             </div>
-            <div className={styles.popupList}>{visible.map((notice) => renderCard(notice, false))}</div>
+            <div className={styles.popupList}>
+              {unreadStored.map((row) => renderStoredCard(row, false))}
+              {visible.map((notice) => renderCard(notice, false))}
+            </div>
             <div className={styles.popupFooter}>
               <label className={styles.never}>
                 <input type="checkbox" checked={neverAgain} onChange={(event) => setNeverAgain(event.target.checked)} />

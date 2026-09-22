@@ -4,6 +4,7 @@ import { ApiError } from "../api/errors";
 import { withDatabaseErrorMapping } from "../database/errors";
 import { isFormBlockType } from "../formBlocks";
 import { getPrismaClient } from "../database/prisma";
+import { notifyEmployees } from "../notifications/notify";
 import { CLOSABLE_STAGES, stageAvailability, type FormStageKey } from "../trainingForms/availability";
 import { assessmentStage } from "./types";
 import type {
@@ -556,6 +557,32 @@ export const assertFactoryScopeForEnrollment = (
 };
 
 export type EnrollmentRepository = ReturnType<typeof createEnrollmentRepository>;
+/** The enrollee hears when HRD settles their seat. */
+const tellEnrollee = (
+  db: PrismaClient,
+  row: Prisma.training_enrollmentGetPayload<{ include: typeof enrollmentInclude }>,
+  outcome: "APPROVED" | "REJECTED",
+  reason?: string,
+) =>
+  notifyEmployees(db, [row.employee_user_id], () => {
+    const course = `${row.training_plan.training_plan_oap.course_name_snapshot} (${row.training_plan.plan_code})`;
+    const start = row.training_plan.start_datetime.toLocaleDateString("th-TH", {
+      timeZone: "Asia/Bangkok",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+    return {
+      title: outcome === "APPROVED" ? "คุณได้รับการลงทะเบียนอบรมแล้ว" : "การลงทะเบียนอบรมไม่ได้รับการอนุมัติ",
+      message:
+        outcome === "APPROVED"
+          ? `คุณมีรายชื่อในหลักสูตร ${course} อบรมวันที่ ${start}${row.training_plan.venue ? ` ที่ ${row.training_plan.venue}` : ""}`
+          : `การลงทะเบียนหลักสูตร ${course} ไม่ได้รับการอนุมัติ เหตุผล: ${reason?.trim() || "ไม่ระบุ"}`,
+      relatedType: outcome === "APPROVED" ? "ENROLLMENT_APPROVED" : "ENROLLMENT_REJECTED",
+      relatedId: row.enrollment_id,
+    };
+  });
+
 export const createEnrollmentRepository = (client?: DatabaseClient) => {
   const db = () => (client ?? getPrismaClient()) as unknown as DatabaseClient & PrismaClient;
   return {
@@ -683,6 +710,8 @@ export const createEnrollmentRepository = (client?: DatabaseClient) => {
           }
         }
 
+        // Only HRD enrolling somebody else is news; an employee registering themselves already knows.
+        if (autoApprove && existing?.approval_status !== "APPROVED") await tellEnrollee(db(), saved, "APPROVED");
         return mapEnrollment(saved);
       });
     },
@@ -767,37 +796,11 @@ export const createEnrollmentRepository = (client?: DatabaseClient) => {
         }
 
         const updated = await db().training_enrollment.update({ where: { enrollment_id: enrollmentId }, data, include: enrollmentInclude });
-
-        if (action === "approve" || action === "reject") {
-          try {
-            const employeeUser = await db().user_account.findFirst({
-              where: {
-                OR: [
-                  current.employee.user_id ? { employee_user_id: current.employee.user_id } : undefined,
-                  current.employee.employee_code ? { username: current.employee.employee_code } : undefined,
-                ].filter(Boolean) as any,
-              },
-              select: { user_id: true },
-            });
-            if (employeeUser) {
-              const courseName = current.training_plan.training_plan_oap.course_name_snapshot || "หลักสูตรฝึกอบรม";
-              await db().notification.create({
-                data: {
-                  user_id: employeeUser.user_id,
-                  title: action === "approve" ? "การลงทะเบียนฝึกอบรมได้รับการอนุมัติ" : "การลงทะเบียนฝึกอบรมไม่ได้รับการอนุมัติ",
-                  message: action === "approve"
-                    ? `คำขอลงทะเบียนหลักสูตร ${courseName} ได้รับการอนุมัติแล้ว`
-                    : `คำขอลงทะเบียนหลักสูตร ${courseName} ไม่ได้รับการอนุมัติ${reason ? `: ${reason}` : ""}`,
-                  related_type: "TRAINING_ENROLLMENT",
-                  related_id: enrollmentId,
-                },
-              });
-            }
-          } catch (err) {
-            console.warn("Could not create employee notification for enrollment status:", err);
-          }
+        // One notification per decision, to every account of the person (merged 24af41e: its own
+        // copy of this looked the person up by username too, which could reach someone else).
+        if (current.approval_status !== updated.approval_status) {
+          await tellEnrollee(db(), updated, updated.approval_status === "APPROVED" ? "APPROVED" : "REJECTED", reason);
         }
-
         return mapEnrollment(updated);
       });
     },

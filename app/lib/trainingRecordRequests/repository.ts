@@ -390,18 +390,12 @@ export const trainingRecordRequestRepository = {
 
       // Notify requester of decision
       try {
-        let requesterUserAccount = await db.user_account.findFirst({
+        // employee_user_id is a person, not an account id: reading it as user_id could land on a
+        // stranger's account, so no account means no notification.
+        const requesterUserAccount = await db.user_account.findFirst({
           where: { employee_user_id: current.employee_user_id },
           select: { user_id: true },
         });
-        if (!requesterUserAccount) {
-          try {
-            requesterUserAccount = await db.user_account.findUnique({
-              where: { user_id: BigInt(current.employee_user_id) },
-              select: { user_id: true },
-            });
-          } catch {}
-        }
 
         if (requesterUserAccount?.user_id) {
           const isApproved = input.action === "approve";

@@ -5,6 +5,7 @@ import type { AuthenticatedPrincipal } from "../auth/types";
 import { withDatabaseErrorMapping } from "../database/errors";
 import { getPrismaClient } from "../database/prisma";
 import { isSectionHeadOrAbove } from "../employeeMasterData";
+import { notifyEmployees } from "../notifications/notify";
 import { assessmentStage } from "../trainingEnrollment/types";
 import {
   EXPENSE_CATEGORIES,
@@ -711,6 +712,16 @@ export const createTrainingRecordRepository = (client?: DatabaseClient) => {
           }
         }
 
+        // Who held each assignment before, so a re-save of the same basket tells nobody twice.
+        const previous = new Map(
+          (
+            await db().training_evaluation_reviewer.findMany({
+              where: { enrollment_id: { in: input.assignments.map((assignment) => BigInt(assignment.enrollmentId)) } },
+              select: { enrollment_id: true, reviewer_user_id: true },
+            })
+          ).map((row) => [row.enrollment_id.toString(), row.reviewer_user_id]),
+        );
+
         await db().$transaction(async (tx) => {
           for (const assignment of input.assignments) {
             const enrollmentId = BigInt(assignment.enrollmentId);
@@ -737,6 +748,22 @@ export const createTrainingRecordRepository = (client?: DatabaseClient) => {
             });
           }
         });
+
+        const newlyAssigned = new Map<string, number>();
+        for (const assignment of input.assignments) {
+          const reviewer = assignment.reviewerUserId;
+          if (reviewer && previous.get(assignment.enrollmentId) !== reviewer) {
+            newlyAssigned.set(reviewer, (newlyAssigned.get(reviewer) ?? 0) + 1);
+          }
+        }
+        for (const [reviewer, count] of newlyAssigned) {
+          await notifyEmployees(db(), [reviewer], () => ({
+            title: "คุณได้รับมอบหมายให้ประเมินผู้เข้าอบรม",
+            message: `HRD มอบหมายให้คุณประเมินผลหลังอบรม 30 วัน ของผู้เข้าอบรม ${count} คน ในรอบ ${plan.plan_name} (${plan.plan_code})`,
+            relatedType: "REVIEWER_ASSIGNED",
+            relatedId: plan.plan_id,
+          }));
+        }
 
         const updated = await db().training_plan.findUniqueOrThrow({
           where: { plan_id: id },

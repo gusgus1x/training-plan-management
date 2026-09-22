@@ -3,6 +3,7 @@ import { ApiError } from "../api/errors";
 import { recordAudit, type AuditActor } from "../audit";
 import { withDatabaseErrorMapping } from "../database/errors";
 import { getPrismaClient } from "../database/prisma";
+import { notifyEmployees } from "../notifications/notify";
 import { matchCertificateFilename } from "./matching";
 import {
   BATCH_STATUS,
@@ -64,6 +65,7 @@ export const createCertificateRepository = (client?: DatabaseClient) => {
   ): Promise<{
     candidates: CertificateCandidate[];
     resultIdByEnrollment: Map<string, string>;
+    planLabel: string;
   }> => {
     const plan = await database.training_plan.findUnique({
       where: { plan_id: BigInt(planId) },
@@ -91,7 +93,7 @@ export const createCertificateRepository = (client?: DatabaseClient) => {
         ]),
     );
 
-    return { candidates, resultIdByEnrollment };
+    return { candidates, resultIdByEnrollment, planLabel: `${plan.plan_name} (${plan.plan_code})` };
   };
 
   const toCard = (
@@ -308,7 +310,7 @@ export const createCertificateRepository = (client?: DatabaseClient) => {
       actor?: AuditActor,
     ): Promise<{ removedPaths: string[] }> {
       return withDatabaseErrorMapping(async () => {
-        const { candidates, resultIdByEnrollment } = await loadPlanRoster(db(), planId, companyId);
+        const { candidates, resultIdByEnrollment, planLabel } = await loadPlanRoster(db(), planId, companyId);
         const candidateByUserId = new Map(candidates.map((c) => [c.employeeUserId, c]));
 
         const claimed = new Set<string>();
@@ -322,7 +324,7 @@ export const createCertificateRepository = (client?: DatabaseClient) => {
           claimed.add(assignment.employeeUserId);
         }
 
-        return db().$transaction(async (tx) => {
+        const confirmed = await db().$transaction(async (tx) => {
           const batch = await loadDraftBatch(tx as unknown as DatabaseClient, planId);
           if (!batch) throw notFound("There is no certificate draft to confirm for this batch.");
 
@@ -425,6 +427,17 @@ export const createCertificateRepository = (client?: DatabaseClient) => {
 
           return { removedPaths: removed.map((file) => file.storage_path) };
         });
+
+        // After the commit: a certificate is news only once it is really issued.
+        for (const assignment of input.assignments) {
+          await notifyEmployees(db() as unknown as PrismaClient, [assignment.employeeUserId], () => ({
+            title: "คุณได้รับใบประกาศนียบัตรใหม่",
+            message: `HRD ออกใบประกาศนียบัตรของรอบอบรม ${planLabel} ให้คุณแล้ว กดเพื่อดูและดาวน์โหลด`,
+            relatedType: "CERTIFICATE_ISSUED",
+            relatedId: BigInt(assignment.certificateFileId),
+          }));
+        }
+        return confirmed;
       });
     },
 

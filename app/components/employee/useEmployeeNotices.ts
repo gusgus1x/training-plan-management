@@ -14,8 +14,6 @@ import {
 
 import type { TrainingRecordRequestRecord } from "../../lib/trainingRecordRequests/types";
 import { listRecordRequests } from "../../lib/trainingRecordRequests/client";
-import type { NotificationRecord } from "../../lib/notifications/types";
-import { listNotifications } from "../../lib/notifications/client";
 
 export type RecordRequestsState = {
   myRequests: TrainingRecordRequestRecord[];
@@ -34,7 +32,6 @@ export function useEmployeeNotices(
     initialRecordRequests ?? { myRequests: [], pendingApprovals: [] },
   );
   const [pendingApproverEnrollments, setPendingApproverEnrollments] = useState<EnrollmentRecord[]>([]);
-  const [systemNotifications, setSystemNotifications] = useState<NotificationRecord[]>([]);
 
   useEffect(() => {
     if (!userKey) return;
@@ -62,14 +59,8 @@ export function useEmployeeNotices(
       })
       .catch(() => {});
 
-    // 3. System notifications
-    listNotifications()
-      .then((data) => {
-        if (isMounted && data?.notifications) {
-          setSystemNotifications(data.notifications);
-        }
-      })
-      .catch(() => {});
+    // The notification table's rows are read by useStoredNotifications, with their read state kept
+    // in the database; listing them here too would show each one twice.
 
     return () => {
       isMounted = false;
@@ -77,8 +68,8 @@ export function useEmployeeNotices(
   }, [userKey]);
 
   const notices = useMemo(
-    () => buildEmployeeNotices(enrollments, recordRequests, pendingApproverEnrollments, systemNotifications),
-    [enrollments, recordRequests, pendingApproverEnrollments, systemNotifications],
+    () => buildEmployeeNotices(enrollments, recordRequests, pendingApproverEnrollments),
+    [enrollments, recordRequests, pendingApproverEnrollments],
   );
   const [state, setState] = useState<NoticeState>({});
 

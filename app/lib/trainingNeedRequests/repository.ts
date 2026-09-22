@@ -4,6 +4,7 @@ import { ApiError } from "../api/errors";
 import { withDatabaseErrorMapping } from "../database/errors";
 import { getPrismaClient } from "../database/prisma";
 import { isSectionHeadOrAbove } from "../employeeMasterData";
+import { notifyEmployees } from "../notifications/notify";
 import type {
   ApproverDecision,
   BulkNeedRequestInput,
@@ -126,6 +127,29 @@ const mapRequest = (row: RequestWithRelations) => ({
     : null,
   plannedAt: row.planned_at?.toISOString() ?? null,
 });
+
+const requestLabel = (row: RequestWithRelations) =>
+  `${row.request_no} (${row.course_name_snapshot || row.requested_course_name || "-"})`;
+
+const thaiDate = (value: Date) =>
+  value.toLocaleDateString("th-TH", { timeZone: "Asia/Bangkok", day: "numeric", month: "short", year: "numeric" });
+
+/** What the requester reads when a decision lands on their request. */
+const tellRequester = (db: PrismaClient, row: RequestWithRelations, approved: boolean, reason: string | null, byHead: boolean) =>
+  notifyEmployees(db, [row.employee_user_id], () => ({
+    title: approved
+      ? byHead
+        ? "หัวหน้าอนุมัติคำขออบรมแล้ว"
+        : "HRD อนุมัติคำขออบรมแล้ว"
+      : "คำขออบรมไม่ได้รับการอนุมัติ",
+    message: approved
+      ? byHead
+        ? `คำขอ ${requestLabel(row)} ผ่านการอนุมัติจากหัวหน้าแล้ว และส่งต่อให้ HRD พิจารณา`
+        : `คำขอ ${requestLabel(row)} ได้รับการอนุมัติจาก HRD แล้ว รอจัดเข้ารอบอบรม`
+      : `คำขอ ${requestLabel(row)} ไม่ได้รับการอนุมัติจาก${byHead ? "หัวหน้า" : " HRD"} เหตุผล: ${reason?.trim() || "ไม่ระบุ"}`,
+    relatedType: approved ? (byHead ? "NEED_REQUEST_HEAD_APPROVED" : "NEED_REQUEST_APPROVED") : "NEED_REQUEST_REJECTED",
+    relatedId: row.training_need_request_id,
+  }));
 
 /** HRD sees a request once its head has approved it, or when it predates the head step. */
 const visibleToHrd: Prisma.training_need_requestWhereInput = {
@@ -322,6 +346,12 @@ export const createNeedRequestRepository = (client?: DatabaseClient) => {
           });
         });
 
+        await notifyEmployees(db(), [created.approver_user_id], () => ({
+          title: "คำขออบรมรอท่านอนุมัติ",
+          message: `${employeeName(created.employee)} ส่งคำขอ ${requestLabel(created)} รอท่านพิจารณาในฐานะหัวหน้า`,
+          relatedType: "NEED_REQUEST_APPROVAL",
+          relatedId: created.training_need_request_id,
+        }));
         return mapRequest(created);
       });
     },
@@ -357,6 +387,7 @@ export const createNeedRequestRepository = (client?: DatabaseClient) => {
             },
             include: requestInclude,
           });
+          await tellRequester(db(), updated, approved, input.note, true);
           return mapRequest(updated);
         }
 
@@ -397,6 +428,12 @@ export const createNeedRequestRepository = (client?: DatabaseClient) => {
             },
             include: requestInclude,
           });
+          await notifyEmployees(db(), [updated.employee_user_id, updated.approver_user_id], () => ({
+            title: "คำขออบรมถูกจัดเข้ารอบอบรมแล้ว",
+            message: `คำขอ ${requestLabel(updated)} ของ ${employeeName(updated.employee)} ถูกจัดเข้ารอบ ${plan.plan_name} วันที่ ${thaiDate(plan.start_datetime)}`,
+            relatedType: "NEED_REQUEST_PLANNED",
+            relatedId: updated.training_need_request_id,
+          }));
           return mapRequest(updated);
         }
 
@@ -413,6 +450,7 @@ export const createNeedRequestRepository = (client?: DatabaseClient) => {
         const updated = await db().$transaction((tx) =>
           hrdDecide(tx, current, input.action as "approve" | "reject" | "reset", input.note, actor),
         );
+        if (input.action !== "reset") await tellRequester(db(), updated, input.action === "approve", input.note, false);
         return mapRequest(updated);
       });
     },
@@ -435,6 +473,7 @@ export const createNeedRequestRepository = (client?: DatabaseClient) => {
           }
           return results;
         });
+        for (const row of updated) await tellRequester(db(), row, input.action === "approve", input.note, false);
         return updated.map(mapRequest);
       });
     },

@@ -2,28 +2,22 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import type { NotificationRecord } from "../../lib/notifications/types";
 import { listEnrollments } from "../../lib/trainingEnrollment/client";
 import type { EnrollmentRecord } from "../../lib/trainingEnrollment/types";
 import { useUiLanguage } from "../ThaiUiLocalization";
-import { Award, Bell, CheckCircle2, ClipboardList, Download, FileText, XCircle } from "../icons/LucideIcons";
+import { Bell, ClipboardList, FileText } from "../icons/LucideIcons";
 import { markDismissed, markSeenInBell, noticeHref, noticeText, unreadCount, type EmployeeNotice } from "./employeeNotices";
 import { useEmployeeNotices } from "./useEmployeeNotices";
+import { storedHref, storedIcon, useStoredNotifications } from "./useStoredNotifications";
 import styles from "./NotificationBell.module.css";
 
 const renderNoticeIcon = (kind: EmployeeNotice["kind"]) => {
   switch (kind) {
-    case "certificate":
-      return <Award size={18} />;
     case "enrollment_approval":
       return <FileText size={18} style={{ color: "var(--ui-30-primary, #007a3d)" }} />;
-    case "system_notification":
-      return <Bell size={18} style={{ color: "#3b82f6" }} />;
     case "record_request_approval":
       return <FileText size={18} style={{ color: "#3b82f6" }} />;
-    case "record_request_approved":
-      return <CheckCircle2 size={18} style={{ color: "#10b981" }} />;
-    case "record_request_rejected":
-      return <XCircle size={18} style={{ color: "#ef4444" }} />;
     case "forms":
     default:
       return <ClipboardList size={18} />;
@@ -31,6 +25,9 @@ const renderNoticeIcon = (kind: EmployeeNotice["kind"]) => {
 };
 
 /**
+ * Two sources in one list: rows the server wrote when something happened (the notification
+ * table, read state kept there), then the to-dos worked out from the employee's own records.
+ *
  * Every notice, always - unlike the dashboard cards, nothing here retires. The red count is only
  * what has not been looked at in this list yet, and opening the list clears it.
  */
@@ -42,8 +39,10 @@ export default function NotificationBell() {
   const [enrollments, setEnrollments] = useState<EnrollmentRecord[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const { rows: stored, markRead } = useStoredNotifications();
   const { notices, state, update } = useEmployeeNotices(enrollments);
-  const unread = unreadCount(notices, state);
+  const storedUnread = stored.filter((row) => !row.isRead).length;
+  const unread = unreadCount(notices, state) + storedUnread;
 
   useEffect(() => {
     // The server scopes an EMPLOYEE caller to their own enrollments.
@@ -64,9 +63,21 @@ export default function NotificationBell() {
   const toggle = () => {
     if (!isOpen && unread) {
       update((current) => markSeenInBell(current, notices));
+      // Opening the list clears the count, same as the to-dos.
+      if (storedUnread) markRead();
     }
     setIsOpen(!isOpen);
   };
+
+  const openStored = (row: NotificationRecord) => {
+    setIsOpen(false);
+    const href = storedHref(row);
+    if (href) router.push(href);
+  };
+
+  const total = stored.length + notices.length;
+  const formatWhen = (iso: string) =>
+    new Date(iso).toLocaleString(isThai ? "th-TH" : "en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
   const open = (notice: EmployeeNotice) => {
     // Read here counts as read on the dashboard too.
@@ -92,10 +103,24 @@ export default function NotificationBell() {
         <div className={styles.panel} role="dialog" aria-label={t("การแจ้งเตือน", "Notifications")}>
           <div className={styles.panelHeader}>
             <strong>{t("การแจ้งเตือน", "Notifications")}</strong>
-            <span>{notices.length} {t("รายการ", "items")}</span>
+            <span>{total} {t("รายการ", "items")}</span>
           </div>
-          {notices.length ? (
+          {total ? (
             <ul className={styles.list}>
+              {stored.map((row) => (
+                <li key={`stored:${row.notificationId}`}>
+                  <button type="button" className={styles.item} data-kind="stored" onClick={() => openStored(row)}>
+                    <span className={styles.itemIcon} aria-hidden="true">
+                      {storedIcon(row.relatedType, 18)}
+                    </span>
+                    <span className={styles.itemBody}>
+                      <span className={styles.itemEyebrow}>{formatWhen(row.createdAt)}</span>
+                      <span className={styles.itemTitle}>{row.title}</span>
+                      <span className={styles.itemDetail}>{row.message}</span>
+                    </span>
+                  </button>
+                </li>
+              ))}
               {notices.map((notice) => {
                 const text = noticeText(notice, isThai);
                 return (

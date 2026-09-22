@@ -7,6 +7,7 @@ import {
   noticeHref,
   noticeText,
 } from "../../app/components/employee/employeeNotices";
+import { storedHref } from "../../app/components/employee/useStoredNotifications";
 
 describe("Training Record Requests Approver Eligibility", () => {
   it("recognizes Section Head and Manager positions as eligible approvers", () => {
@@ -185,10 +186,7 @@ describe("Training Record Requests Notification Integration", () => {
   };
 
   it("builds pending approval notification for the approver (Section Head)", () => {
-    const notices = buildEmployeeNotices([], {
-      pendingApprovals: [pendingReq],
-      myRequests: [],
-    });
+    const notices = buildEmployeeNotices([], { pendingApprovals: [pendingReq] });
 
     expect(notices).toHaveLength(1);
     const notice = notices[0];
@@ -206,41 +204,26 @@ describe("Training Record Requests Notification Integration", () => {
     expect(href).toBe("/?module=record&tab=download&focusRequest=req-101&at=123456");
   });
 
-  it("builds approved notification for the employee with full docx download prompt", () => {
-    const notices = buildEmployeeNotices([], {
-      pendingApprovals: [],
-      myRequests: [approvedReq],
+  // The decision is news written to the notification table when the head decides; the bell reads
+  // it from there, so nothing is worked out from the request list any more.
+  it("leaves decided requests to the notification table and lands its rows on the request", () => {
+    expect(buildEmployeeNotices([], { pendingApprovals: [approvedReq, rejectedReq] })).toEqual([]);
+
+    const row = (relatedType: string, relatedId: string) => ({
+      notificationId: "1",
+      userId: "10",
+      title: "",
+      message: "",
+      relatedType,
+      relatedId,
+      isRead: false,
+      createdAt: "2026-09-21T03:00:00.000Z",
     });
-
-    expect(notices).toHaveLength(1);
-    const notice = notices[0];
-    expect(notice.kind).toBe("record_request_approved");
-    expect(notice.tab).toBe("download");
-
-    const textTh = noticeText(notice, true);
-    expect(textTh.eyebrow).toBe("คำขอได้รับการอนุมัติแล้ว");
-    expect(textTh.title).toContain("TRR-202609-000102");
-    expect(textTh.detail).toContain("ดาวน์โหลดเอกสาร Word (.docx)");
-
-    const href = noticeHref(notice, 999999);
-    expect(href).toBe("/?module=record&tab=download&downloadReq=req-102&at=999999");
-  });
-
-  it("builds rejection notification with rejection reason for the employee", () => {
-    const notices = buildEmployeeNotices([], {
-      pendingApprovals: [],
-      myRequests: [rejectedReq],
-    });
-
-    expect(notices).toHaveLength(1);
-    const notice = notices[0];
-    expect(notice.kind).toBe("record_request_rejected");
-
-    const textTh = noticeText(notice, true);
-    expect(textTh.eyebrow).toBe("คำขอไม่ได้รับการอนุมัติ");
-    expect(textTh.detail).toContain("ข้อมูลไม่ครบถ้วน");
-
-    const href = noticeHref(notice, 888888);
-    expect(href).toBe("/?module=record&tab=download&focusRequest=req-103&at=888888");
+    expect(storedHref(row("TRAINING_RECORD_REQUEST_APPROVED", "req-102"), 999999)).toBe(
+      "/?module=record&tab=download&downloadReq=req-102&at=999999",
+    );
+    expect(storedHref(row("TRAINING_RECORD_REQUEST_REJECTED", "req-103"), 888888)).toBe(
+      "/?module=record&tab=download&focusRequest=req-103&at=888888",
+    );
   });
 });

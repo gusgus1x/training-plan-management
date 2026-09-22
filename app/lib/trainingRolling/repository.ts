@@ -6,6 +6,7 @@ import type { AuditActor } from "../audit";
 import { withDatabaseErrorMapping } from "../database/errors";
 import { getPrismaClient } from "../database/prisma";
 import { removePlanCertificateDirectory } from "../certificates/storage";
+import { notifyEmployees } from "../notifications/notify";
 import { cascadeDeleteTrainingPlans } from "../trainingPlanCascade";
 import type { WorkflowCourse } from "../trainingWorkflow";
 import type { CreateRollingPlanInput, RollingPlanListFilters, RollingPlanStatus, UpdateRollingPlanInput } from "./types";
@@ -400,10 +401,12 @@ export const createRollingPlanRepository = (client?: DatabaseClient) => {
             data.plan_name = `${courseName} - Batch ${batchNo}`;
             return applyRemainingFields(tx, id, input, data);
           });
+          await tellEnrolleesOfChange(db(), current, updated);
           return mapRollingPlan(updated);
         }
 
         const updated = await applyRemainingFields(db(), id, input, data);
+        await tellEnrolleesOfChange(db(), current, updated);
         return mapRollingPlan(updated);
       });
     },
@@ -427,6 +430,13 @@ export const createRollingPlanRepository = (client?: DatabaseClient) => {
               select: { batch_name: true, start_datetime: true },
             })
           : null;
+        // Likewise the people on it: the cascade removes their enrollments with the batch.
+        const doomed = await db()
+          .training_plan.findUnique({
+            where: { plan_id: planId },
+            select: { plan_name: true, plan_code: true, start_datetime: true, training_enrollment: { select: { employee_user_id: true } } },
+          })
+          .catch(() => null);
 
         await db().$transaction(async (tx) => {
           await cascadeDeleteTrainingPlans(tx, [planId], actor && {
@@ -442,10 +452,69 @@ export const createRollingPlanRepository = (client?: DatabaseClient) => {
         // After the commit, never inside it: a rolled-back delete must not have removed the files.
         await removePlanCertificateDirectory(planId.toString());
 
+        if (doomed?.training_enrollment?.length) {
+          await notifyEmployees(db(), doomed.training_enrollment.map((row) => row.employee_user_id), () => ({
+            title: "รอบอบรมถูกยกเลิก",
+            message: `รอบอบรม ${doomed.plan_name} (${doomed.plan_code}) วันที่ ${thaiDate(doomed.start_datetime)} ถูกยกเลิกแล้ว รายชื่อของคุณในรอบนี้ถูกลบออก`,
+            relatedType: "PLAN_CANCELLED",
+            // The batch no longer exists, so there is nothing left to point at.
+            relatedId: null,
+          }));
+        }
+
         return { rollingPlanId: id, outcome: "DELETED" as const };
       });
     },
   };
+};
+
+const thaiDate = (value: Date) =>
+  value.toLocaleDateString("th-TH", { timeZone: "Asia/Bangkok", day: "numeric", month: "short", year: "numeric" });
+
+const thaiDateTime = (value: Date) =>
+  value.toLocaleString("th-TH", {
+    timeZone: "Asia/Bangkok",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+type PlanMoment = { plan_id: bigint; plan_name: string; plan_code: string; start_datetime: Date; end_datetime: Date; venue: string | null; status: string };
+
+/** Everyone on the batch hears when its date, place or existence changes under them. Other edits
+ *  (name, forms, capacity) change nothing about where they need to be. */
+const tellEnrolleesOfChange = async (db: PrismaClient, before: PlanMoment, after: PlanMoment) => {
+  // The batch is already saved; failing to tell anyone must not report the save as failed.
+  try {
+    const cancelled = after.status === "CANCELLED" && before.status !== "CANCELLED";
+    const moved =
+      before.start_datetime.getTime() !== after.start_datetime.getTime() ||
+      before.end_datetime.getTime() !== after.end_datetime.getTime();
+    const relocated = (before.venue ?? "") !== (after.venue ?? "");
+    if (!cancelled && !moved && !relocated) return;
+
+    const enrollees = await db.training_enrollment.findMany({
+      where: { plan_id: after.plan_id, approval_status: { in: ["APPROVED", "PENDING"] } },
+      select: { employee_user_id: true },
+    });
+    const label = `${after.plan_name} (${after.plan_code})`;
+    const changes = [
+      moved ? `วันเวลาใหม่ ${thaiDateTime(after.start_datetime)}` : null,
+      relocated ? `สถานที่ใหม่ ${after.venue || "ยังไม่ระบุ"}` : null,
+    ].filter(Boolean);
+    await notifyEmployees(db, enrollees.map((row) => row.employee_user_id), () => ({
+      title: cancelled ? "รอบอบรมถูกยกเลิก" : "รอบอบรมมีการเปลี่ยนแปลง",
+      message: cancelled
+        ? `รอบอบรม ${label} วันที่ ${thaiDate(before.start_datetime)} ถูกยกเลิกแล้ว`
+        : `รอบอบรม ${label} มีการเปลี่ยนแปลง: ${changes.join(" · ")}`,
+      relatedType: cancelled ? "PLAN_CANCELLED" : "PLAN_CHANGED",
+      relatedId: after.plan_id,
+    }));
+  } catch (error) {
+    console.warn("Could not notify enrollees of a batch change:", error);
+  }
 };
 
 const applyRemainingFields = async (

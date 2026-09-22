@@ -19,7 +19,6 @@ export const certificatesOf = (enrollments: EnrollmentRecord[]) =>
   enrollments.filter((enrollment) => enrollment.certificate !== null);
 
 import type { TrainingRecordRequestRecord } from "../../lib/trainingRecordRequests/types";
-import type { NotificationRecord } from "../../lib/notifications/types";
 
 export type NoticeStageKey = "pre" | "post" | "evaluation" | "evaluation30";
 const STAGE_ORDER: NoticeStageKey[] = ["pre", "post", "evaluation", "evaluation30"];
@@ -30,25 +29,25 @@ type NoticeBase = {
   tab: "completed" | "pending" | "download";
 };
 
+/**
+ * Things still waiting on this person, worked out from their records every time: each one goes
+ * away by itself once it is done. News about something that already happened (a certificate, a
+ * decision, a changed batch) is written to the notification table instead - see
+ * useStoredNotifications.
+ */
 export type EmployeeNotice =
-  | (NoticeBase & { kind: "certificate"; certificateFileId: string; enrollmentId: string; courseName: string; courseCode: string; tab: "completed" | "pending" })
   | (NoticeBase & { kind: "forms"; stages: NoticeStageKey[]; enrollmentId: string; courseName: string; courseCode: string; tab: "completed" | "pending" })
   | (NoticeBase & { kind: "record_request_approval"; request: TrainingRecordRequestRecord; tab: "download" })
-  | (NoticeBase & { kind: "record_request_approved"; request: TrainingRecordRequestRecord; tab: "download" })
-  | (NoticeBase & { kind: "record_request_rejected"; request: TrainingRecordRequestRecord; tab: "download" })
-  | (NoticeBase & { kind: "enrollment_approval"; enrollment: EnrollmentRecord; tab: "pending" })
-  | (NoticeBase & { kind: "system_notification"; notification: NotificationRecord; tab: "pending" });
+  | (NoticeBase & { kind: "enrollment_approval"; enrollment: EnrollmentRecord; tab: "pending" });
 
 const APPROVED_STATUSES = ["Factory Approved", "Center Approved"];
 
 export const buildEmployeeNotices = (
   enrollments: EnrollmentRecord[],
   recordRequests?: {
-    myRequests?: TrainingRecordRequestRecord[];
     pendingApprovals?: TrainingRecordRequestRecord[];
   },
   pendingEnrollments?: EnrollmentRecord[],
-  systemNotifications?: NotificationRecord[],
   now: Date = new Date(),
 ): EmployeeNotice[] => {
   const followUpDue = new Set(pendingFollowUpEvaluationsOf(enrollments, now).map((enrollment) => enrollment.id));
@@ -82,48 +81,9 @@ export const buildEmployeeNotices = (
     }
   }
 
-  // 3. Training record requests submitted by current employee
-  if (recordRequests?.myRequests?.length) {
-    for (const req of recordRequests.myRequests) {
-      if (req.status === "APPROVED") {
-        notices.push({
-          id: `record_request_approved:${req.id}`,
-          kind: "record_request_approved",
-          request: req,
-          tab: "download",
-        });
-      } else if (req.status === "REJECTED") {
-        notices.push({
-          id: `record_request_rejected:${req.id}`,
-          kind: "record_request_rejected",
-          request: req,
-          tab: "download",
-        });
-      }
-    }
-  }
-
-  // 4. System notifications from database table
-  if (systemNotifications?.length) {
-    for (const notif of systemNotifications) {
-      // Avoid duplicate if an enrollment_approval notice is already generated
-      if (
-        notif.relatedType === "TRAINING_ENROLLMENT" &&
-        notif.relatedId &&
-        notices.some((n) => n.id === `enrollment_approval:${notif.relatedId}`)
-      ) {
-        continue;
-      }
-      notices.push({
-        id: `system_notification:${notif.notificationId}`,
-        kind: "system_notification",
-        notification: notif,
-        tab: "pending",
-      });
-    }
-  }
-
-  // 5. Course enrollments notices (certificates and forms)
+  // 3. Forms still to answer on each course
+  // (Decisions, certificates and the notification table's rows are news, not to-dos: the bell reads
+  // those through useStoredNotifications.)
   for (const enrollment of enrollments) {
     const attended = enrollment.attendance?.status === "PRESENT";
     const base = {
@@ -132,14 +92,6 @@ export const buildEmployeeNotices = (
       courseCode: enrollment.plan.courseCode,
       tab: attended ? ("completed" as const) : ("pending" as const),
     };
-    if (enrollment.certificate) {
-      notices.push({
-        ...base,
-        id: `certificate:${enrollment.certificate.certificateFileId}`,
-        kind: "certificate",
-        certificateFileId: enrollment.certificate.certificateFileId,
-      });
-    }
     // A course still waiting on approval has nothing the employee can answer yet.
     if (!attended && !APPROVED_STATUSES.includes(enrollment.status)) continue;
     const stages = new Set<NoticeStageKey>(outstandingStageKeys(enrollment.plan.assessment));
@@ -173,14 +125,6 @@ export const noticeText = (notice: EmployeeNotice, isThai: boolean) => {
         };
   }
 
-  if (notice.kind === "system_notification") {
-    const notif = notice.notification;
-    return {
-      eyebrow: isThai ? "การแจ้งเตือนจากระบบ" : "System Notification",
-      title: notif.title,
-      detail: notif.message,
-    };
-  }
   if (notice.kind === "record_request_approval") {
     const req = notice.request;
     const requester = req.employeeName
@@ -199,41 +143,6 @@ export const noticeText = (notice: EmployeeNotice, isThai: boolean) => {
         };
   }
 
-  if (notice.kind === "record_request_approved") {
-    const req = notice.request;
-    return isThai
-      ? {
-          eyebrow: "คำขอได้รับการอนุมัติแล้ว",
-          title: `คำขอประวัติการอบรมเลขที่ ${req.requestNo} ได้รับการอนุมัติแล้ว`,
-          detail: "คลิกเพื่อดาวน์โหลดเอกสาร Word (.docx) ข้อมูลฉบับจริงของท่านได้ทันที",
-        }
-      : {
-          eyebrow: "Request approved",
-          title: `Training record request #${req.requestNo} has been approved`,
-          detail: "Tap to download your official Word (.docx) training record document",
-        };
-  }
-
-  if (notice.kind === "record_request_rejected") {
-    const req = notice.request;
-    return isThai
-      ? {
-          eyebrow: "คำขอไม่ได้รับการอนุมัติ",
-          title: `คำขอประวัติการอบรมเลขที่ ${req.requestNo} ไม่ได้รับการอนุมัติ`,
-          detail: req.rejectionReason ? `เหตุผล: ${req.rejectionReason}` : "คลิกเพื่อดูรายละเอียดคำขอ",
-        }
-      : {
-          eyebrow: "Request rejected",
-          title: `Training record request #${req.requestNo} was rejected`,
-          detail: req.rejectionReason ? `Reason: ${req.rejectionReason}` : "Tap to view details",
-        };
-  }
-
-  if (notice.kind === "certificate") {
-    return isThai
-      ? { eyebrow: "ใบเกียรติบัตรใหม่", title: `คุณได้รับใบเกียรติบัตรจากคอร์ส ${notice.courseName}`, detail: "กดที่นี่เพื่อดูข้อมูล" }
-      : { eyebrow: "New certificate", title: `You received a certificate for ${notice.courseName}`, detail: "Tap here to view it" };
-  }
   const hasTest = notice.stages.some((key) => key === "pre" || key === "post");
   const hasEvaluation = notice.stages.some((key) => key === "evaluation" || key === "evaluation30");
   const what = isThai
@@ -313,20 +222,8 @@ export const noticeHref = (notice: EmployeeNotice, now = Date.now()) => {
   if (notice.kind === "record_request_approval") {
     return `/?module=record&tab=download&focusRequest=${encodeURIComponent(notice.request.id)}&at=${now}`;
   }
-  if (notice.kind === "record_request_approved") {
-    return `/?module=record&tab=download&downloadReq=${encodeURIComponent(notice.request.id)}&at=${now}`;
-  }
-  if (notice.kind === "record_request_rejected") {
-    return `/?module=record&tab=download&focusRequest=${encodeURIComponent(notice.request.id)}&at=${now}`;
-  }
   if (notice.kind === "enrollment_approval") {
     return `/?module=register&focusApproval=${encodeURIComponent(notice.enrollment.id)}&at=${now}`;
-  }
-  if (notice.kind === "system_notification") {
-    if (notice.notification.relatedType === "TRAINING_ENROLLMENT") {
-      return `/?module=register&at=${now}`;
-    }
-    return `/?at=${now}`;
   }
   return `/?module=record&tab=${notice.tab}&focus=${encodeURIComponent(notice.enrollmentId)}&at=${now}`;
 };
