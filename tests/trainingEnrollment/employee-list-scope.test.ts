@@ -100,4 +100,16 @@ describe("employee enrollment list stays scoped to the caller", () => {
       null,
     );
   });
+
+  it("scopes pendingForApprover to the caller for HRD too, not every pending enrollment", async () => {
+    const { listEnrollments } = await listWith(
+      employee({ role: "HRD_CENTER", userId: "7" }),
+      "pendingForApprover=true",
+    );
+
+    expect(listEnrollments).toHaveBeenCalledWith(
+      expect.objectContaining({ approverUserId: "7", approvalStatus: "PENDING" }),
+      null,
+    );
+  });
 });
