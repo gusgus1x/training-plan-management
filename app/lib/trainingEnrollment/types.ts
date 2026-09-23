@@ -238,17 +238,18 @@ export type EnrollmentRecord = {
 };
 
 /**
- * One filterable field: what a dropdown shows, plus every spelling it answers to (Thai, English,
- * and for a company its code), so a search in either language finds the same people.
+ * One filterable field: what a dropdown shows in Thai and in English, plus every spelling it answers
+ * to (both names, and for a company its code; for a person their employee code), so a search in
+ * either language finds the same people.
  */
-export type NomineeField = { label: string; values: string[] };
+export type NomineeField = { label: string; labelEn: string; values: string[] };
 
 /** An employee a head may send to a batch (see nomination.ts). */
 export type Nominee = {
   employeeUserId: string;
   employeeCode: string;
   name: string;
-  position: string;
+  position: NomineeField;
   company: NomineeField;
   division: NomineeField;
   department: NomineeField;

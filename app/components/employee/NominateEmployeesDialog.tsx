@@ -3,7 +3,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { createEnrollment, listNominees } from "../../lib/trainingEnrollment/client";
-import type { Nominee } from "../../lib/trainingEnrollment/types";
+import type { Nominee, NomineeField } from "../../lib/trainingEnrollment/types";
 import { useToast } from "../ToastHost";
 import { useUiLanguage } from "../ThaiUiLocalization";
 import { XCircle } from "../icons/LucideIcons";
@@ -26,24 +26,29 @@ const EMPTY_FILTERS: Record<FilterKey, string> = { company: "", division: "", se
 
 type Known = Record<FilterKey, Set<string>>;
 
+type Label = (field: NomineeField) => string;
+
 /**
  * A label picked from a dropdown matches exactly, so "ผลิต 1" does not also pull in "ผลิต 10";
  * anything else typed searches every spelling of the field, in either language.
  */
-const matches = (nominee: Nominee, filters: Record<FilterKey, string>, known: Known, skip?: FilterKey) =>
+const matches = (nominee: Nominee, filters: Record<FilterKey, string>, known: Known, labelOf: Label, skip?: FilterKey) =>
   FILTERS.every(({ key }) => {
     const wanted = filters[key].trim().toLowerCase();
     if (key === skip || !wanted) return true;
     const field = nominee[key];
-    if (known[key].has(wanted)) return field.label.toLowerCase() === wanted;
+    if (known[key].has(wanted)) return labelOf(field).toLowerCase() === wanted;
     return field.values.some((value) => value.toLowerCase().includes(wanted));
   });
+
+/** What a dropdown shows, and every spelling that finds it when typed. */
+type Option = { label: string; search: string[] };
 
 type SelectProps = {
   label: string;
   placeholder: string;
   value: string;
-  options: string[];
+  options: Option[];
   onChange: (value: string) => void;
 };
 
@@ -63,7 +68,7 @@ const FilterSelect = ({ label, placeholder, value, options, onChange }: SelectPr
   }, [isOpen]);
 
   const typed = value.trim().toLowerCase();
-  const shown = options.filter((option) => !typed || option.toLowerCase().includes(typed));
+  const shown = options.filter((option) => !typed || option.search.some((text) => text.includes(typed)));
 
   return (
     <div className={styles.filter} ref={wrapperRef}>
@@ -94,17 +99,17 @@ const FilterSelect = ({ label, placeholder, value, options, onChange }: SelectPr
           <ul className={styles.options} id={listId} role="listbox">
             {shown.length ? (
               shown.map((option) => (
-                <li key={option}>
+                <li key={option.label}>
                   <button
                     type="button"
                     className={styles.option}
-                    data-selected={option === value || undefined}
+                    data-selected={option.label === value || undefined}
                     onClick={() => {
-                      onChange(option);
+                      onChange(option.label);
                       setIsOpen(false);
                     }}
                   >
-                    {option}
+                    {option.label}
                   </button>
                 </li>
               ))
@@ -143,27 +148,37 @@ export default function NominateEmployeesDialog({ course, onClose }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [course.rollingId]);
 
+  const labelOf: Label = (field) => (language === "th" ? field.label : field.labelEn);
+
   const known = useMemo(() => {
     const sets = Object.fromEntries(FILTERS.map(({ key }) => [key, new Set<string>()])) as Known;
     for (const nominee of nominees ?? []) {
-      for (const { key } of FILTERS) sets[key].add(nominee[key].label.toLowerCase());
+      for (const { key } of FILTERS) sets[key].add((language === "th" ? nominee[key].label : nominee[key].labelEn).toLowerCase());
     }
     return sets;
-  }, [nominees]);
+  }, [nominees, language]);
 
-  const visible = useMemo(
-    () => (nominees ?? []).filter((nominee) => matches(nominee, filters, known)),
-    [nominees, filters, known],
-  );
+  const visible = (nominees ?? []).filter((nominee) => matches(nominee, filters, known, labelOf));
   const selectable = visible.filter((nominee) => !nominee.alreadyEnrolled);
   const allVisibleSelected = selectable.length > 0 && selectable.every((nominee) => selected.has(nominee.employeeUserId));
 
   // Each dropdown lists only what the other filters still allow, so picking a company narrows the
   // division, section and department lists to that company - and the same the other way round.
-  const optionsFor = (key: FilterKey) =>
-    [...new Set((nominees ?? []).filter((nominee) => matches(nominee, filters, known, key)).map((nominee) => nominee[key].label))]
-      .filter(Boolean)
-      .sort((a, b) => a.localeCompare(b, "th"));
+  // Typing "IT" finds "แผนกบริหารโครงการด้านเทคโนโลยีสารสนเทศ" through its English name.
+  const optionsFor = (key: FilterKey): Option[] => {
+    const byLabel = new Map<string, Set<string>>();
+    for (const nominee of nominees ?? []) {
+      if (!matches(nominee, filters, known, labelOf, key)) continue;
+      const label = labelOf(nominee[key]);
+      if (!label) continue;
+      const search = byLabel.get(label) ?? new Set<string>();
+      for (const value of nominee[key].values) search.add(value.toLowerCase());
+      byLabel.set(label, search);
+    }
+    return [...byLabel]
+      .map(([label, search]) => ({ label, search: [...search] }))
+      .sort((a, b) => a.label.localeCompare(b.label, "th"));
+  };
 
   const toggle = (id: string) =>
     setSelected((current) => {
@@ -205,7 +220,8 @@ export default function NominateEmployeesDialog({ course, onClose }: Props) {
   };
 
   const detailOf = (nominee: Nominee) =>
-    [nominee.employeeCode, nominee.position, nominee.company.label, nominee.division.label, nominee.department.label, nominee.section.label]
+    [nominee.position, nominee.company, nominee.division, nominee.department, nominee.section]
+      .map(labelOf)
       .filter(Boolean)
       .join(" · ");
 
@@ -255,7 +271,7 @@ export default function NominateEmployeesDialog({ course, onClose }: Props) {
                     onChange={() => toggle(nominee.employeeUserId)}
                   />
                   <span className={styles.person}>
-                    <strong>{nominee.name}</strong>
+                    <strong>{labelOf(nominee.person)}</strong>
                     <small>{detailOf(nominee)}</small>
                   </span>
                   {nominee.alreadyEnrolled ? (

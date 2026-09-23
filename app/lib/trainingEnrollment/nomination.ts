@@ -50,10 +50,19 @@ const nameOf = (employee: RankedEmployee) =>
   `${employee.first_name_en || ""} ${employee.last_name_en || ""}`.trim() ||
   employee.user_id;
 
-/** The first value given is the label; every value given, including that one, is searchable. */
-const field = (...values: Array<string | null | undefined>): NomineeField => {
-  const present = [...new Set(values.map((value) => value?.trim() ?? "").filter(Boolean))];
-  return { label: present[0] ?? "", values: present };
+/**
+ * `th` and `en` are what the dropdown shows in each UI language, each falling back to the other;
+ * they and any `extra` spellings are all searchable.
+ */
+const field = (
+  th: string | null | undefined,
+  en: string | null | undefined,
+  ...extra: Array<string | null | undefined>
+): NomineeField => {
+  const label = th?.trim() || en?.trim() || "";
+  const labelEn = en?.trim() || label;
+  const values = [...new Set([th, en, ...extra].map((value) => value?.trim() ?? "").filter(Boolean))];
+  return { label, labelEn, values };
 };
 
 /**
@@ -95,13 +104,19 @@ export const listNominees = async (principal: AuthenticatedPrincipal, planId: st
       employeeUserId: employee.user_id,
       employeeCode: employee.employee_code ?? "",
       name: nameOf(employee),
-      position: employee.position?.position_name_th || employee.position?.position_name_en || "",
-      // One label per company so the list is not the same company three times over, but the code
-      // and both full names all still match a search.
-      company: field(employee.company?.company_code, employee.company?.company_name_th, employee.company?.company_name_en),
+      position: field(employee.position?.position_name_th, employee.position?.position_name_en),
+      // One label per company (its code, in both languages) so the list is not the same company
+      // three times over, but both full names still match a search.
+      company: field(
+        employee.company?.company_code,
+        employee.company?.company_code,
+        employee.company?.company_name_th,
+        employee.company?.company_name_en,
+      ),
       division: field(employee.division?.division_name_th, employee.division?.division_name_en),
       department: field(employee.department?.department_name_th, employee.department?.department_name_en),
       section: field(employee.section?.section_name_th, employee.section?.section_name_en),
+      // The employee code is no longer shown, but still answers a search.
       person: field(
         nameOf(employee),
         `${employee.first_name_en || ""} ${employee.last_name_en || ""}`,
