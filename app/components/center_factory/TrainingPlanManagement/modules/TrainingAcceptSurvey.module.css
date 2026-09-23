@@ -1765,6 +1765,11 @@
   gap: 6px;
 }
 
+/* globals.css forces width: 100% on text inputs, so the wrapper sets the width. */
+.orgFilterBox {
+  width: 240px;
+}
+
 .filterControlLabel {
   font-size: 0.78rem;
   font-weight: 700;

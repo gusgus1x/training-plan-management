@@ -22,107 +22,6 @@
   gap: 10px;
 }
 
-.filter {
-  display: grid;
-  gap: 4px;
-}
-
-.filterLabel {
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: var(--ui-30-ink, #1e293b);
-}
-
-.filterBox {
-  position: relative;
-}
-
-.filterBox input {
-  border: 1px solid var(--ui-30-border, #cbd5e1);
-  border-radius: 8px;
-  background: var(--ui-60-surface, #ffffff);
-  color: var(--ui-30-ink, #1e293b);
-  font-weight: 500;
-  padding-right: 52px;
-}
-
-.filterBox input:focus {
-  outline: none;
-  border-color: var(--ui-30-primary, #2563eb);
-  box-shadow: 0 0 0 3px var(--ui-30-primary-soft, rgba(37, 99, 235, 0.15));
-}
-
-.clearBtn,
-.caretBtn {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  border: none;
-  background: transparent;
-  color: var(--ui-30-muted);
-  cursor: pointer;
-  font-size: 1rem;
-  line-height: 1;
-  padding: 4px;
-}
-
-.clearBtn {
-  right: 26px;
-}
-
-.caretBtn {
-  right: 8px;
-  font-size: 0.8rem;
-}
-
-/* The dropdown is ours, not the browser's datalist, so it follows the app's theme. */
-.options {
-  position: absolute;
-  z-index: 5;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  margin: 0;
-  padding: 4px;
-  list-style: none;
-  max-height: 260px;
-  overflow-y: auto;
-  background: var(--ui-60-surface, #ffffff);
-  border: 1px solid var(--ui-30-border, #cbd5e1);
-  border-radius: 10px;
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
-}
-
-.option {
-  display: block;
-  width: 100%;
-  text-align: left;
-  border: none;
-  background: transparent;
-  color: var(--ui-30-ink, #1e293b);
-  font-size: 0.86rem;
-  padding: 8px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.option:hover,
-.option:focus-visible {
-  background: var(--ui-30-primary-soft, rgba(37, 99, 235, 0.12));
-  color: var(--ui-30-primary, #2563eb);
-}
-
-.option[data-selected] {
-  font-weight: 700;
-  color: var(--ui-30-primary, #2563eb);
-}
-
-.optionEmpty {
-  padding: 8px 10px;
-  color: var(--ui-30-muted);
-  font-size: 0.86rem;
-}
-
 .list {
   display: flex;
   flex-direction: column;
@@ -133,31 +32,26 @@
 }
 
 /* The default 6px bar is hard to see and hard to grab. */
-.list::-webkit-scrollbar,
-.options::-webkit-scrollbar {
+.list::-webkit-scrollbar {
   width: 14px;
 }
 
-.list::-webkit-scrollbar-track,
-.options::-webkit-scrollbar-track {
+.list::-webkit-scrollbar-track {
   background: var(--ui-60-surface-soft, #f1f5f9);
   border-radius: 8px;
 }
 
-.list::-webkit-scrollbar-thumb,
-.options::-webkit-scrollbar-thumb {
+.list::-webkit-scrollbar-thumb {
   background: var(--ui-30-muted, #94a3b8);
   border: 3px solid var(--ui-60-surface-soft, #f1f5f9);
   border-radius: 8px;
 }
 
-.list::-webkit-scrollbar-thumb:hover,
-.options::-webkit-scrollbar-thumb:hover {
+.list::-webkit-scrollbar-thumb:hover {
   background: var(--ui-30-ink, #475569);
 }
 
-.list,
-.options {
+.list {
   scrollbar-width: auto;
   scrollbar-color: var(--ui-30-muted, #94a3b8) var(--ui-60-surface-soft, #f1f5f9);
 }

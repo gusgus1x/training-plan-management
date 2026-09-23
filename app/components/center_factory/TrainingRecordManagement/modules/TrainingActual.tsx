@@ -1929,8 +1929,8 @@ export default function TrainingActual() {
                     <tr>
                       <th style={{ width: "135px" }}>{t("เข้าร่วม", "Attended")}</th>
                       <th>{t("ข้อมูลพนักงาน", "Employee")}</th>
-                      <th>{t("บริษัท / แผนก", "Company / department")}</th>
-                      <th>{t("ส่วน / ฝ่าย", "Section / division")}</th>
+                      <th>{t("บริษัท / ส่วน", "Company / department")}</th>
+                      <th>{t("แผนก / ฝ่าย", "Section / division")}</th>
                       <th>{t("ตำแหน่ง / ระดับ", "Position / level")}</th>
                     </tr>
                   </thead>

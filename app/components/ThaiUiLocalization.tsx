@@ -263,7 +263,7 @@ const thaiUiDictionary: Record<string, string> = {
   "Data Setup": "ตั้งค่าข้อมูล",
   Date: "วันที่",
   Delete: "ลบ",
-  Department: "แผนก",
+  Department: "ส่วน",
   Detail: "รายละเอียด",
   Details: "รายละเอียด",
   Done: "เสร็จแล้ว",

@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { createEnrollment, listNominees } from "../../lib/trainingEnrollment/client";
 import type { Nominee, NomineeField } from "../../lib/trainingEnrollment/types";
 import { useToast } from "../ToastHost";
 import { useUiLanguage } from "../ThaiUiLocalization";
 import { XCircle } from "../icons/LucideIcons";
+import FilterSelect, { matchesFilter, type FilterOption } from "../FilterSelect";
 import registerStyles from "./RegisterTrainingModule.module.css";
 import styles from "./NominateEmployeesDialog.module.css";
 
@@ -28,100 +29,8 @@ type Known = Record<FilterKey, Set<string>>;
 
 type Label = (field: NomineeField) => string;
 
-/**
- * A label picked from a dropdown matches exactly, so "ผลิต 1" does not also pull in "ผลิต 10";
- * anything else typed searches every spelling of the field, in either language.
- */
-const matches = (nominee: Nominee, filters: Record<FilterKey, string>, known: Known, labelOf: Label, skip?: FilterKey) =>
-  FILTERS.every(({ key }) => {
-    const wanted = filters[key].trim().toLowerCase();
-    if (key === skip || !wanted) return true;
-    const field = nominee[key];
-    if (known[key].has(wanted)) return labelOf(field).toLowerCase() === wanted;
-    return field.values.some((value) => value.toLowerCase().includes(wanted));
-  });
-
-/** What a dropdown shows, and every spelling that finds it when typed. */
-type Option = { label: string; search: string[] };
-
-type SelectProps = {
-  label: string;
-  placeholder: string;
-  value: string;
-  options: Option[];
-  onChange: (value: string) => void;
-};
-
-/** A dropdown that is also a search box. The browser's own datalist cannot be styled or themed. */
-const FilterSelect = ({ label, placeholder, value, options, onChange }: SelectProps) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const listId = useId();
-  const wrapperRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const close = (event: MouseEvent) => {
-      if (!wrapperRef.current?.contains(event.target as Node)) setIsOpen(false);
-    };
-    document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
-  }, [isOpen]);
-
-  const typed = value.trim().toLowerCase();
-  const shown = options.filter((option) => !typed || option.search.some((text) => text.includes(typed)));
-
-  return (
-    <div className={styles.filter} ref={wrapperRef}>
-      <span className={styles.filterLabel}>{label}</span>
-      <div className={styles.filterBox}>
-        <input
-          value={value}
-          placeholder={placeholder}
-          onChange={(event) => {
-            onChange(event.target.value);
-            setIsOpen(true);
-          }}
-          onFocus={() => setIsOpen(true)}
-          role="combobox"
-          aria-controls={listId}
-          aria-expanded={isOpen}
-          aria-label={label}
-        />
-        {value ? (
-          <button type="button" className={styles.clearBtn} onClick={() => onChange("")} aria-label="clear">
-            ×
-          </button>
-        ) : null}
-        <button type="button" className={styles.caretBtn} onClick={() => setIsOpen(!isOpen)} aria-label={label} tabIndex={-1}>
-          ▾
-        </button>
-        {isOpen ? (
-          <ul className={styles.options} id={listId} role="listbox">
-            {shown.length ? (
-              shown.map((option) => (
-                <li key={option.label}>
-                  <button
-                    type="button"
-                    className={styles.option}
-                    data-selected={option.label === value || undefined}
-                    onClick={() => {
-                      onChange(option.label);
-                      setIsOpen(false);
-                    }}
-                  >
-                    {option.label}
-                  </button>
-                </li>
-              ))
-            ) : (
-              <li className={styles.optionEmpty}>—</li>
-            )}
-          </ul>
-        ) : null}
-      </div>
-    </div>
-  );
-};
+const matches = (nominee: Nominee, filters: Record<FilterKey, string>, known: Known, skip?: FilterKey) =>
+  FILTERS.every(({ key }) => key === skip || matchesFilter(filters[key], known[key], nominee[key].values));
 
 type Props = {
   course: { rollingId: string; id: string; title: string };
@@ -158,17 +67,17 @@ export default function NominateEmployeesDialog({ course, onClose }: Props) {
     return sets;
   }, [nominees, language]);
 
-  const visible = (nominees ?? []).filter((nominee) => matches(nominee, filters, known, labelOf));
+  const visible = (nominees ?? []).filter((nominee) => matches(nominee, filters, known));
   const selectable = visible.filter((nominee) => !nominee.alreadyEnrolled);
   const allVisibleSelected = selectable.length > 0 && selectable.every((nominee) => selected.has(nominee.employeeUserId));
 
   // Each dropdown lists only what the other filters still allow, so picking a company narrows the
   // division, section and department lists to that company - and the same the other way round.
   // Typing "IT" finds "แผนกบริหารโครงการด้านเทคโนโลยีสารสนเทศ" through its English name.
-  const optionsFor = (key: FilterKey): Option[] => {
+  const optionsFor = (key: FilterKey): FilterOption[] => {
     const byLabel = new Map<string, Set<string>>();
     for (const nominee of nominees ?? []) {
-      if (!matches(nominee, filters, known, labelOf, key)) continue;
+      if (!matches(nominee, filters, known, key)) continue;
       const label = labelOf(nominee[key]);
       if (!label) continue;
       const search = byLabel.get(label) ?? new Set<string>();

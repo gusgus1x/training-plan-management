@@ -49,6 +49,7 @@ import {
   FileText,
   Search,
 } from "../../../icons/LucideIcons";
+import FilterSelect, { matchesFilter, type FilterOption } from "../../../FilterSelect";
 import styles from "./TrainingAcceptSurvey.module.css";
 
 export const trainingAcceptSurveyModule = {
@@ -159,7 +160,7 @@ const toSurveyEmployee = (employee: EmployeeRecord): SurveyEmployee => {
 
   const section = employee.sectionName || employee.sectionCode || "-";
   const division = employee.divisionName || employee.divisionCode || employee.functionName || "-";
-  const department = employee.departmentName || employee.departmentCode || employee.functionName || "-";
+  const department = employee.departmentName || employee.departmentCode || "-";
 
   return {
     id: employee.employeeId,
@@ -249,6 +250,12 @@ const formatFullName = (profile: { prefix?: string; firstName: string; lastName:
   return `${p}${profile.firstName}${l}`.trim();
 };
 
+/** An org name worth listing: the grid uses "-" for none. */
+const orgValues = (value?: string) => (value && value.trim() !== "-" ? [value.trim()] : []);
+
+const orgOptions = (values: string[]): FilterOption[] =>
+  [...new Set(values)].sort((a, b) => a.localeCompare(b, "th")).map((label) => ({ label, search: [label.toLowerCase()] }));
+
 const getEmployeeOrgDisplay = (emp: { department?: string; section?: string; division?: string }) => {
   const main = emp.department || emp.section || emp.division || "-";
   const subParts = [emp.section, emp.division].filter(Boolean).filter((s) => s !== main);
@@ -323,28 +330,28 @@ function PaginatedEmployeeGrid({
   const effectiveEmptyMessage = emptyMessage ?? (isThai ? "ไม่มีรายชื่อพนักงานสำหรับบริษัทนี้" : "No employee records for this company");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDepartment, setSelectedDepartment] = useState("");
+  const [selectedSection, setSelectedSection] = useState("");
   const [selectedHistoryStatus, setSelectedHistoryStatus] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
-  const departmentOptions = useMemo(() => {
-    const set = new Set<string>();
-    employees.forEach((emp) => {
-      const dept = emp.department?.trim();
-      if (dept && dept !== "-") {
-        set.add(dept);
-      }
-    });
-    return Array.from(set).sort((a, b) => a.localeCompare(b, "th"));
-  }, [employees]);
+  // Labels as they appear in each list; a typed value that equals one matches it exactly.
+  const departmentLabels = useMemo(() => new Set(employees.flatMap((emp) => orgValues(emp.department).map((v) => v.toLowerCase()))), [employees]);
+  const sectionLabels = useMemo(() => new Set(employees.flatMap((emp) => orgValues(emp.section).map((v) => v.toLowerCase()))), [employees]);
+
+  // Each list only offers what the other box still allows, as on the Register send dialog.
+  const departmentOptions = orgOptions(
+    employees.filter((emp) => matchesFilter(selectedSection, sectionLabels, orgValues(emp.section))).flatMap((emp) => orgValues(emp.department)),
+  );
+  const sectionOptions = orgOptions(
+    employees.filter((emp) => matchesFilter(selectedDepartment, departmentLabels, orgValues(emp.department))).flatMap((emp) => orgValues(emp.section)),
+  );
 
   const filteredEmployees = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return employees.filter((emp) => {
-      // 1. Department Filter
-      if (selectedDepartment) {
-        const dept = emp.department?.trim();
-        if (dept !== selectedDepartment) return false;
-      }
+      // 1. Department (ส่วน) and section (แผนก) filters
+      if (!matchesFilter(selectedDepartment, departmentLabels, orgValues(emp.department))) return false;
+      if (!matchesFilter(selectedSection, sectionLabels, orgValues(emp.section))) return false;
 
       // 2. Training History & Status Filter
       if (selectedHistoryStatus) {
@@ -408,13 +415,14 @@ function PaginatedEmployeeGrid({
 
       return true;
     });
-  }, [employees, selectedDepartment, selectedHistoryStatus, searchQuery, courseHistoryMap, draftSubmittedEmployees, enrollments]);
+  }, [employees, selectedDepartment, selectedSection, departmentLabels, sectionLabels, selectedHistoryStatus, searchQuery, courseHistoryMap, draftSubmittedEmployees, enrollments]);
 
-  const isAnyFilterActive = Boolean(searchQuery || selectedDepartment || selectedHistoryStatus);
+  const isAnyFilterActive = Boolean(searchQuery || selectedDepartment || selectedSection || selectedHistoryStatus);
 
   const handleResetFilters = () => {
     setSearchQuery("");
     setSelectedDepartment("");
+    setSelectedSection("");
     setSelectedHistoryStatus("");
     setCurrentPage(1);
   };
@@ -453,28 +461,39 @@ function PaginatedEmployeeGrid({
     <div className={styles.paginatedContainer}>
       <div className={styles.dropdownToolbar}>
         <div className={styles.dropdownFiltersWrap}>
-          {/* Department Filter Dropdown */}
+          {/* Department (ส่วน) and section (แผนก): type to search, or pick from the list */}
           <div className={styles.filterControlGroup}>
-            <label className={styles.filterControlLabel} htmlFor="filter-dept">
-              {isThai ? "แผนก:" : "Dept:"}
-            </label>
-            <select
-              id="filter-dept"
-              className={`${styles.dropdownFilterSelect} ${selectedDepartment ? styles.activeFilterSelect : ""}`}
-              value={selectedDepartment}
-              onChange={(e) => {
-                setSelectedDepartment(e.target.value);
-                setCurrentPage(1);
-              }}
-              title={isThai ? "เลือกกรองตามแผนก" : "Filter by Department"}
-            >
-              <option value="">{isThai ? "— ทุกแผนก —" : "— All Depts —"}</option>
-              {departmentOptions.map((dept) => (
-                <option key={dept} value={dept}>
-                  {dept}
-                </option>
-              ))}
-            </select>
+            <span className={styles.filterControlLabel}>{isThai ? "ส่วน:" : "Department:"}</span>
+            <div className={styles.orgFilterBox}>
+              <FilterSelect
+                label={isThai ? "ส่วน" : "Department"}
+                showLabel={false}
+                placeholder={isThai ? "ทุกส่วน" : "All departments"}
+                value={selectedDepartment}
+                options={departmentOptions}
+                onChange={(value) => {
+                  setSelectedDepartment(value);
+                  setCurrentPage(1);
+                }}
+              />
+            </div>
+          </div>
+
+          <div className={styles.filterControlGroup}>
+            <span className={styles.filterControlLabel}>{isThai ? "แผนก:" : "Section:"}</span>
+            <div className={styles.orgFilterBox}>
+              <FilterSelect
+                label={isThai ? "แผนก" : "Section"}
+                showLabel={false}
+                placeholder={isThai ? "ทุกแผนก" : "All sections"}
+                value={selectedSection}
+                options={sectionOptions}
+                onChange={(value) => {
+                  setSelectedSection(value);
+                  setCurrentPage(1);
+                }}
+              />
+            </div>
           </div>
 
           {/* History / Status Filter Dropdown */}
@@ -576,9 +595,9 @@ function PaginatedEmployeeGrid({
               <span>ชื่อ</span>
               <span>นามสกุล</span>
               <span>บริษัท</span>
-              <span>ส่วนงาน</span>
-              <span>ฝ่าย</span>
               <span>แผนก</span>
+              <span>ฝ่าย</span>
+              <span>ส่วน</span>
               <span>ตำแหน่ง</span>
               <span>ระดับ</span>
             </div>
@@ -2160,9 +2179,9 @@ export default function TrainingAcceptSurvey({
                       <span>ชื่อ</span>
                       <span>นามสกุล</span>
                       <span>บริษัท</span>
-                      <span>ส่วนงาน</span>
-                      <span>ฝ่าย</span>
                       <span>แผนก</span>
+                      <span>ฝ่าย</span>
+                      <span>ส่วน</span>
                       <span>ตำแหน่ง</span>
                       <span>ระดับ</span>
                     </div>
@@ -2276,9 +2295,9 @@ export default function TrainingAcceptSurvey({
                           <span>ชื่อ</span>
                           <span>นามสกุล</span>
                           <span>บริษัท</span>
-                          <span>ส่วนงาน</span>
-                          <span>ฝ่าย</span>
                           <span>แผนก</span>
+                          <span>ฝ่าย</span>
+                          <span>ส่วน</span>
                           <span>ตำแหน่ง</span>
                           <span>ระดับ</span>
                         </div>
@@ -2432,9 +2451,9 @@ export default function TrainingAcceptSurvey({
                             <span>ชื่อ</span>
                             <span>นามสกุล</span>
                             <span>บริษัท</span>
-                            <span>ส่วนงาน</span>
-                            <span>ฝ่าย</span>
                             <span>แผนก</span>
+                            <span>ฝ่าย</span>
+                            <span>ส่วน</span>
                             <span>ตำแหน่ง</span>
                             <span>ระดับ</span>
                           </div>
@@ -2519,9 +2538,9 @@ export default function TrainingAcceptSurvey({
                                 <span>ชื่อ</span>
                                 <span>นามสกุล</span>
                                 <span>บริษัท</span>
-                                <span>ส่วนงาน</span>
-                                <span>ฝ่าย</span>
                                 <span>แผนก</span>
+                                <span>ฝ่าย</span>
+                                <span>ส่วน</span>
                                 <span>ตำแหน่ง</span>
                                 <span>ระดับ</span>
                               </div>
@@ -2640,9 +2659,9 @@ export default function TrainingAcceptSurvey({
                           <span>ชื่อ</span>
                           <span>นามสกุล</span>
                           <span>บริษัท</span>
-                          <span>ส่วนงาน</span>
-                          <span>ฝ่าย</span>
                           <span>แผนก</span>
+                          <span>ฝ่าย</span>
+                          <span>ส่วน</span>
                           <span>ตำแหน่ง</span>
                           <span>ระดับ</span>
                         </div>

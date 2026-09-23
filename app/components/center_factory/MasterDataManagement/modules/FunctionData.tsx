@@ -741,8 +741,8 @@ export default function FunctionData() {
       return;
     }
     const missingFields: string[] = [];
-    if (!departmentForm.code.trim()) missingFields.push("รหัสแผนก (Department Code)");
-    if (!departmentForm.nameTh.trim()) missingFields.push("ชื่อแผนก ภาษาไทย (Department Name TH)");
+    if (!departmentForm.code.trim()) missingFields.push("รหัสส่วน (Department Code)");
+    if (!departmentForm.nameTh.trim()) missingFields.push("ชื่อส่วน ภาษาไทย (Department Name TH)");
     if (missingFields.length > 0) {
       await notice({ missingFields });
       return;
@@ -776,7 +776,7 @@ export default function FunctionData() {
       setSelectedLevel("department");
       setDepartmentFormMode(null);
       setDepartmentForm(blankForm());
-      toast.success(`บันทึกแผนก ${result.department.departmentCode} แล้ว / Department saved`);
+      toast.success(`บันทึกส่วน ${result.department.departmentCode} แล้ว / Department saved`);
     } catch (caught: unknown) {
       setDepartmentError(departmentErrorText(caught));
     } finally {
@@ -788,7 +788,7 @@ export default function FunctionData() {
     if (!isCenter || !selectedDepartment || isSavingDepartment) {
       return;
     }
-    if (!(await confirm({ message: { th: `ยืนยันที่จะลบแผนก ${selectedDepartment.departmentCode} หรือไม่?`, en: `Confirm deleting department ${selectedDepartment.departmentCode}?` }, danger: true }))) {
+    if (!(await confirm({ message: { th: `ยืนยันที่จะลบส่วน ${selectedDepartment.departmentCode} หรือไม่?`, en: `Confirm deleting department ${selectedDepartment.departmentCode}?` }, danger: true }))) {
       return;
     }
     setIsSavingDepartment(true);
@@ -801,7 +801,7 @@ export default function FunctionData() {
       setDepartmentRows(nextRows);
       setSelectedDepartmentId(nextRows[0]?.departmentId ?? null);
       setDepartmentFormMode(null);
-      toast.success(`ลบแผนก ${result.department.departmentCode} แล้ว / Department deleted`);
+      toast.success(`ลบส่วน ${result.department.departmentCode} แล้ว / Department deleted`);
       void listDepartments()
         .then((refreshed) => applyDepartmentRows(refreshed.items))
         .catch(() => undefined);
@@ -853,8 +853,8 @@ export default function FunctionData() {
       return;
     }
     const missingFields: string[] = [];
-    if (!sectionForm.code.trim()) missingFields.push("รหัสส่วนงาน (Section Code)");
-    if (!sectionForm.nameTh.trim()) missingFields.push("ชื่อส่วนงาน ภาษาไทย (Section Name TH)");
+    if (!sectionForm.code.trim()) missingFields.push("รหัสแผนก (Section Code)");
+    if (!sectionForm.nameTh.trim()) missingFields.push("ชื่อแผนก ภาษาไทย (Section Name TH)");
     if (missingFields.length > 0) {
       await notice({ missingFields });
       return;
@@ -888,7 +888,7 @@ export default function FunctionData() {
       setSelectedLevel("section");
       setSectionFormMode(null);
       setSectionForm(blankForm());
-      toast.success(`บันทึกส่วนงาน ${result.section.sectionCode} แล้ว / Section saved`);
+      toast.success(`บันทึกแผนก ${result.section.sectionCode} แล้ว / Section saved`);
     } catch (caught: unknown) {
       setSectionError(sectionErrorText(caught));
     } finally {
@@ -900,7 +900,7 @@ export default function FunctionData() {
     if (!isCenter || !selectedSection || isSavingSection) {
       return;
     }
-    if (!(await confirm({ message: { th: `ยืนยันที่จะลบส่วนงาน ${selectedSection.sectionCode} หรือไม่?`, en: `Confirm deleting section ${selectedSection.sectionCode}?` }, danger: true }))) {
+    if (!(await confirm({ message: { th: `ยืนยันที่จะลบแผนก ${selectedSection.sectionCode} หรือไม่?`, en: `Confirm deleting section ${selectedSection.sectionCode}?` }, danger: true }))) {
       return;
     }
     setIsSavingSection(true);
@@ -913,7 +913,7 @@ export default function FunctionData() {
       setSectionRows(nextRows);
       setSelectedSectionId(nextRows[0]?.sectionId ?? null);
       setSectionFormMode(null);
-      toast.success(`ลบส่วนงาน ${result.section.sectionCode} แล้ว / Section deleted`);
+      toast.success(`ลบแผนก ${result.section.sectionCode} แล้ว / Section deleted`);
       void listSections()
         .then((refreshed) => applySectionRows(refreshed.items))
         .catch(() => undefined);
