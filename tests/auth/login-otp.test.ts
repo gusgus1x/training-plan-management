@@ -69,7 +69,7 @@ const memoryStore = (accounts: Record<string, Account>) => {
         .filter((row) => row.userId === userId && row.createdAt >= since)
         .map((row) => row.createdAt)
         .sort((a, b) => b.getTime() - a.getTime()),
-    createOtp: async ({ userId, email, codeHash, expiresAt }) => {
+    createOtp: async ({ userId, email, codeHash, expiresAt, createdAt }) => {
       rows.push({
         otpId: String(rows.length + 1),
         userId,
@@ -77,7 +77,7 @@ const memoryStore = (accounts: Record<string, Account>) => {
         codeHash,
         expiresAt,
         attemptCount: 0,
-        createdAt: clock.now,
+        createdAt,
         consumedAt: null,
       });
     },
@@ -257,21 +257,50 @@ describe("POST /api/auth/otp/request", () => {
     expect(sent).toHaveLength(0);
   });
 
-  it("limits resends to one per minute and five per hour", async () => {
+  it("limits resends to one per 30 seconds and five per hour", async () => {
     const { store } = memoryStore({ "7": { email: "owner@gmail.com", otpVerifiedUntil: null } });
     const { request } = handlers(store);
     const ask = () => request(post("/api/auth/otp/request", {}, pendingCookie()));
 
-    expect((await ask()).status).toBe(200);
-    expect((await ask()).status).toBe(429);
+    const first = await ask();
+    expect(first.status).toBe(200);
+    expect((await first.json()).data).toMatchObject({ expiresInSeconds: 180, resendAfterSeconds: 30 });
+
+    // Too soon: the code already sent still works, so its remaining life comes back with the wait.
+    clock.now = new Date(clock.now.getTime() + 10_000);
+    const early = await ask();
+    expect(early.status).toBe(429);
+    expect((await early.json()).error.details).toEqual({
+      retryAfterSeconds: 20,
+      expiresInSeconds: 170,
+      maskedEmail: "ow***@gmail.com",
+    });
     for (let i = 0; i < 4; i += 1) {
-      clock.now = new Date(clock.now.getTime() + 61_000);
+      clock.now = new Date(clock.now.getTime() + 31_000);
       expect((await ask()).status).toBe(200);
     }
-    clock.now = new Date(clock.now.getTime() + 61_000);
+    clock.now = new Date(clock.now.getTime() + 31_000);
     const limited = await ask();
     expect(limited.status).toBe(429);
     expect((await limited.json()).error.code).toBe("OTP_RATE_LIMITED");
+  });
+});
+
+describe("resend wait with a future-stamped row", () => {
+  it("treats a row stamped hours ahead (old server-local created_at) as just sent, not hours away", async () => {
+    const { store, rows } = memoryStore({ "7": { email: "owner@gmail.com", otpVerifiedUntil: null } });
+    rows.push({
+      otpId: "1",
+      userId: "7",
+      email: "owner@gmail.com",
+      codeHash: "x",
+      expiresAt: new Date(clock.now.getTime() + 60_000),
+      attemptCount: 0,
+      createdAt: new Date(clock.now.getTime() + 7 * 60 * 60 * 1000),
+      consumedAt: null,
+    });
+    const response = await handlers(store).request(post("/api/auth/otp/request", {}, pendingCookie()));
+    expect((await response.json()).error.details.retryAfterSeconds).toBe(30);
   });
 });
 

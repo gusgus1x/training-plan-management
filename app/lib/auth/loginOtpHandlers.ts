@@ -88,11 +88,22 @@ export const createOtpRequestHandler = (dependencies: OtpHandlerDependencies = {
       }
 
       const sentLastHour = await store.listSentSince(userId, new Date(now.getTime() - 60 * 60 * 1000));
-      const lastSent = sentLastHour[0];
-      if (lastSent && now.getTime() - lastSent.getTime() < OTP_RESEND_SECONDS * 1000) {
-        const wait = Math.ceil((OTP_RESEND_SECONDS * 1000 - (now.getTime() - lastSent.getTime())) / 1000);
+      // A row stamped in the future (written before created_at came from the app clock) counts as
+      // sent just now, so it costs one normal wait instead of hours.
+      const lastSent = sentLastHour[0] ? Math.min(sentLastHour[0].getTime(), now.getTime()) : null;
+      if (lastSent !== null && now.getTime() - lastSent < OTP_RESEND_SECONDS * 1000) {
+        const wait = Math.ceil((OTP_RESEND_SECONDS * 1000 - (now.getTime() - lastSent)) / 1000);
+        // The code already sent still works: say where it went and how long it lasts, so the page
+        // can go straight to the code box instead of leaving the employee with nowhere to type it.
+        const pending = await store.latestUnconsumed(userId);
+        const expiresInSeconds =
+          pending && pending.expiresAt.getTime() > now.getTime()
+            ? Math.ceil((pending.expiresAt.getTime() - now.getTime()) / 1000)
+            : 0;
         throw fail("OTP_RESEND_TOO_SOON", "Please wait before requesting another code", 429, {
           retryAfterSeconds: wait,
+          expiresInSeconds,
+          maskedEmail: (pending ? maskEmail(pending.email) : maskEmail(email)) ?? "",
         });
       }
       if (sentLastHour.length >= OTP_MAX_SENDS_PER_HOUR) {
@@ -105,6 +116,7 @@ export const createOtpRequestHandler = (dependencies: OtpHandlerDependencies = {
         email,
         codeHash: hashOtpCode(userId, code),
         expiresAt: new Date(now.getTime() + OTP_CODE_TTL_SECONDS * 1000),
+        createdAt: now,
       });
       await (dependencies.send ?? sendOtpEmail)(email, code);
 

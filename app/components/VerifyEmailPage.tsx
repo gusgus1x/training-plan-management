@@ -37,12 +37,19 @@ export default function VerifyEmailPage({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [resendIn, setResendIn] = useState(0);
+  const [expiresIn, setExpiresIn] = useState(0);
 
+  // One tick drives both countdowns: the resend wait and how long the code just sent still works.
   useEffect(() => {
-    if (resendIn <= 0) return;
-    const timer = window.setTimeout(() => setResendIn((seconds) => seconds - 1), 1000);
+    if (resendIn <= 0 && expiresIn <= 0) return;
+    const timer = window.setTimeout(() => {
+      setResendIn((seconds) => Math.max(seconds - 1, 0));
+      setExpiresIn((seconds) => Math.max(seconds - 1, 0));
+    }, 1000);
     return () => window.clearTimeout(timer);
-  }, [resendIn]);
+  }, [resendIn, expiresIn]);
+
+  const clock = (seconds: number) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 
   const describe = (caught: unknown) => {
     const failure = caught instanceof LoginOtpClientError ? caught : null;
@@ -90,8 +97,18 @@ export default function VerifyEmailPage({
       const result = await requestLoginOtp(maskedEmail ? null : email.trim());
       setSentTo(result.maskedEmail);
       setResendIn(result.resendAfterSeconds);
+      setExpiresIn(result.expiresInSeconds);
       setCode("");
     } catch (caught) {
+      // A code sent moments ago still works (e.g. after going back and signing in again): open the
+      // code box with its remaining time rather than leaving the employee nowhere to type it.
+      const details = caught instanceof LoginOtpClientError && caught.code === "OTP_RESEND_TOO_SOON" ? caught.details : null;
+      if (details && typeof details.expiresInSeconds === "number" && details.expiresInSeconds > 0) {
+        setSentTo((typeof details.maskedEmail === "string" && details.maskedEmail) || maskedEmail || email.trim());
+        setResendIn(typeof details.retryAfterSeconds === "number" ? details.retryAfterSeconds : 0);
+        setExpiresIn(details.expiresInSeconds);
+        return;
+      }
       setError(describe(caught));
     } finally {
       setBusy(false);
@@ -186,10 +203,12 @@ export default function VerifyEmailPage({
               autoFocus
             />
             <p className={styles.hint}>
-              {t("รหัสมีอายุ 5 นาที ถ้าไม่พบ ให้ดูในกล่อง Spam", "The code is valid for 5 minutes. Check Spam if you cannot find it.")}
+              {expiresIn > 0
+                ? t(`รหัสหมดอายุใน ${clock(expiresIn)} นาที · ถ้าไม่พบ ให้ดูในกล่อง Spam`, `Code expires in ${clock(expiresIn)} · check Spam if you cannot find it.`)
+                : t("รหัสหมดอายุแล้ว กรุณากดส่งรหัสใหม่", "This code has expired. Please send a new one.")}
             </p>
             {error ? <p className={styles.error} role="alert">{error}</p> : null}
-            <button className={styles.primary} type="submit" disabled={busy || code.length !== OTP_LENGTH}>
+            <button className={styles.primary} type="submit" disabled={busy || code.length !== OTP_LENGTH || expiresIn <= 0}>
               {t("ยืนยันและเข้าสู่ระบบ", "Verify and continue")}
             </button>
             <button className={styles.secondary} type="button" onClick={() => void sendCode()} disabled={busy || resendIn > 0}>

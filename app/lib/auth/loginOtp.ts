@@ -13,9 +13,9 @@ import { getSessionSecret } from "./session";
  * Admin can change it. HRD and Admin accounts never see this step.
  */
 
-export const OTP_CODE_TTL_SECONDS = 5 * 60;
+export const OTP_CODE_TTL_SECONDS = 3 * 60;
 export const OTP_VERIFIED_DAYS = 2;
-export const OTP_RESEND_SECONDS = 60;
+export const OTP_RESEND_SECONDS = 30;
 export const OTP_MAX_ATTEMPTS = 5;
 export const OTP_MAX_SENDS_PER_HOUR = 5;
 export const OTP_PENDING_SECONDS = 10 * 60;
@@ -131,7 +131,9 @@ export type LoginOtpStore = {
   getAccountState(userId: string): Promise<OtpAccountState | null>;
   isEmailTakenByOther(email: string, userId: string): Promise<boolean>;
   listSentSince(userId: string, since: Date): Promise<Date[]>;
-  createOtp(input: { userId: string; email: string; codeHash: string; expiresAt: Date }): Promise<void>;
+  /** createdAt comes from the app clock: the column default (sysdatetime) is server-local time, which
+   *  Prisma reads as UTC - seven hours ahead here, so the resend wait came out at ~25,000 seconds. */
+  createOtp(input: { userId: string; email: string; codeHash: string; expiresAt: Date; createdAt: Date }): Promise<void>;
   latestUnconsumed(userId: string): Promise<OtpRow | null>;
   recordFailedAttempt(otpId: string): Promise<void>;
   /** Marks the code used and binds the email; false when someone else consumed it first. */
@@ -164,9 +166,9 @@ export const prismaLoginOtpStore: LoginOtpStore = {
     return rows.map((row) => row.created_at);
   },
 
-  async createOtp({ userId, email, codeHash, expiresAt }) {
+  async createOtp({ userId, email, codeHash, expiresAt, createdAt }) {
     await getPrismaClient().auth_login_otp.create({
-      data: { user_id: BigInt(userId), email, code_hash: codeHash, expires_at: expiresAt },
+      data: { user_id: BigInt(userId), email, code_hash: codeHash, expires_at: expiresAt, created_at: createdAt },
     });
   },
 

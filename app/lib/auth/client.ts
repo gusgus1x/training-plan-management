@@ -253,7 +253,11 @@ const postOtp = async (path: string, body: unknown, fetcher: Fetcher) => {
 
 export const requestLoginOtp = async (email: string | null, fetcher: Fetcher = fetch) => {
   const response = await postOtp("/api/auth/otp/request", email ? { email } : {}, fetcher);
-  const data = (await response.json()).data as { maskedEmail: string | null; resendAfterSeconds: number };
+  const data = (await response.json()).data as {
+    maskedEmail: string | null;
+    expiresInSeconds: number;
+    resendAfterSeconds: number;
+  };
   return data;
 };
 
