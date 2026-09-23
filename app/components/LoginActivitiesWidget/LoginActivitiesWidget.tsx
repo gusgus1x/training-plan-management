@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import styles from "./LoginActivitiesWidget.module.css";
+import LinkifiedText from "../LinkifiedText";
 import { useUiLanguage } from "../ThaiUiLocalization";
 
 export interface LoginActivityItem {
@@ -478,7 +479,7 @@ export default function LoginActivitiesWidget({ className }: LoginActivitiesWidg
               {/* Full Description */}
               {selectedActivity.description && (
                 <div className={styles.modalDescription}>
-                  {selectedActivity.description}
+                  <LinkifiedText text={selectedActivity.description} />
                 </div>
               )}
             </div>

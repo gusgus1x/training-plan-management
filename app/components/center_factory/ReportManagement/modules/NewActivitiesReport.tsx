@@ -8,6 +8,7 @@ import { useToast } from "../../../ToastHost";
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import type { ReportModuleProps } from "./index";
 import styles from "./NewActivitiesReport.module.css";
+import LinkifiedText from "../../../LinkifiedText";
 import { ActivityFormModal, AddActivityButton } from "../../NewActivities/components";
 
 export const newActivitiesReportModule = {
@@ -1187,7 +1188,7 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
                   </h2>
 
               <div className={styles.detailDescription}>
-                {activeActivity.description}
+                <LinkifiedText text={activeActivity.description} />
               </div>
             </div>
             );

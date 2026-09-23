@@ -14,6 +14,7 @@ import { ACTIVE_ENROLLMENT_STATUSES, type EnrollmentRecord } from "../../../lib/
 import { loadWorkflowRollingPlans, type RollingPlan } from "../TrainingPlanManagement/modules/TrainingRolling";
 import { isCourseDateOrTimeEnded } from "../../../lib/calendarDate";
 import styles from "./NewActivities.module.css";
+import LinkifiedText from "../../LinkifiedText";
 import { AddActivityButton, ActivityFormModal } from "./components";
 
 interface NewActivitiesProps {
@@ -1803,7 +1804,7 @@ export default function NewActivities({
                 </h2>
 
                 <p className={styles.detailDescription}>
-                  {activeActivity.description}
+                  <LinkifiedText text={activeActivity.description} />
                 </p>
 
                 {/* Linked Course Card with Quick Enrollment */}
