@@ -2,6 +2,7 @@ import type { PrismaClient } from "../../generated/prisma/client";
 import { Prisma } from "../../generated/prisma/client";
 import { ApiError } from "../api/errors";
 import { withDatabaseErrorMapping } from "../database/errors";
+import { isTrainedEnrollment } from "./trained";
 import { isFormBlockType } from "../formBlocks";
 import { getPrismaClient } from "../database/prisma";
 import { notifyEmployees } from "../notifications/notify";
@@ -877,10 +878,10 @@ export const createEnrollmentRepository = (client?: DatabaseClient) => {
                 course_id: courseId,
               },
             },
+            // Narrowed by isTrainedEnrollment below: an approval alone is a seat, not a training.
             OR: [
-              { approval_status: "APPROVED" },
               { training_result: { completion_status: "COMPLETED" } },
-              { attendance: { attendance_status: { in: ["PRESENT", "ATTENDED"] } } },
+              { attendance: { attendance_status: { in: ["PRESENT", "LATE"] } } },
             ],
           },
           include: {
@@ -897,6 +898,7 @@ export const createEnrollmentRepository = (client?: DatabaseClient) => {
                 plan_name: true,
                 batch_no: true,
                 batch_name: true,
+                end_datetime: true,
                 training_plan_oap: {
                   select: {
                     plan_year: true,
@@ -922,7 +924,19 @@ export const createEnrollmentRepository = (client?: DatabaseClient) => {
           ],
         });
 
-        return priorEnrollments.map((row): CoursePriorHistoryRecord => ({
+        const now = new Date();
+        const trained = priorEnrollments.filter((row) =>
+          isTrainedEnrollment(
+            {
+              attendanceStatus: row.attendance?.attendance_status,
+              completionStatus: row.training_result?.completion_status,
+              planEnd: row.training_plan.end_datetime,
+            },
+            now,
+          ),
+        );
+
+        return trained.map((row): CoursePriorHistoryRecord => ({
           employeeId: row.employee.employee_id.toString(),
           employeeUserId: row.employee_user_id || row.employee.user_id,
           employeeCode: row.employee.employee_code ?? "",

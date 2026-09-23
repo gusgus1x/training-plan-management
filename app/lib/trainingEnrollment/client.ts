@@ -1,6 +1,6 @@
 "use client";
 
-import type { CoursePriorHistoryRecord, CreateEnrollmentInput, EnrollmentDeleted, EnrollmentListFilters, EnrollmentRecord, Nominee, SetAttendanceInput, UpdateEnrollmentInput } from "./types";
+import type { CourseCoverageEmployee, CoursePriorHistoryRecord, CreateEnrollmentInput, EnrollmentDeleted, EnrollmentListFilters, EnrollmentRecord, Nominee, SetAttendanceInput, UpdateEnrollmentInput } from "./types";
 
 // A plain Error threw away the API's error code and details, so a caller could not tell a
 // prerequisite rejection (409 PREREQUISITE_NOT_MET, with the missing courses in `details`) apart
@@ -57,6 +57,15 @@ export const getCourseEnrollmentHistory = async ({ planId }: { planId: string })
     cache: "no-store",
   });
   return parseApiResponse<{ history: CoursePriorHistoryRecord[] }>(response);
+};
+
+/** Every active employee in the caller's scope against the course behind `planId`. HRD only. */
+export const getCourseCoverage = async (planId: string) => {
+  const response = await fetch(`/api/training-plan/enrollments/course-coverage?planId=${encodeURIComponent(planId)}`, {
+    credentials: "include",
+    cache: "no-store",
+  });
+  return parseApiResponse<{ employees: CourseCoverageEmployee[] }>(response);
 };
 
 /** Who the signed-in head may send to a batch; without a planId, only whether they may send anyone. */

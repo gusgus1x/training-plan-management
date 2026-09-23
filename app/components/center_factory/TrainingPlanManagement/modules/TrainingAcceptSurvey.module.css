@@ -2708,3 +2708,84 @@
   transform: none !important;
   box-shadow: none !important;
 }
+
+/* Section tabs below the participant list, styled like the Training Record detail tabs. */
+.surveyNavTabs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px;
+  background: var(--ui-60-surface-soft);
+  border: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-lg, 12px);
+  margin: 0 0 4px;
+  position: sticky;
+  top: 10px;
+  z-index: 10;
+}
+
+.surveyNavTab,
+.surveyNavTabActive {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 800;
+  padding: 8px 18px;
+  border-radius: var(--ui-radius-md, 8px);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+}
+
+.surveyNavTab {
+  background: transparent;
+  color: var(--ui-30-muted);
+}
+
+.surveyNavTab:hover {
+  color: var(--ui-30-ink);
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.surveyNavTabActive {
+  background: var(--ui-60-surface);
+  color: var(--ui-30-primary);
+  border-color: var(--ui-30-primary-border);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+
+:global([data-theme="dark"]) .surveyNavTab,
+:global(.dark) .surveyNavTab {
+  color: #cbd5e1;
+}
+
+:global([data-theme="dark"]) .surveyNavTab:hover,
+:global(.dark) .surveyNavTab:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+:global([data-theme="dark"]) .surveyNavTabActive,
+:global(.dark) .surveyNavTabActive {
+  background: linear-gradient(135deg, #007a3d 0%, #047857 100%);
+  color: #ffffff !important;
+  border-color: #10b981;
+}
+
+.surveyTabBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
+  font-size: 0.72rem;
+  font-weight: 900;
+}

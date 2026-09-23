@@ -296,6 +296,24 @@ export type EnrollmentListFilters = {
   approvalStatus?: string | null;
 };
 
+/** One active employee against one course (see coverage.ts). department = ส่วน, section = แผนก. */
+export type CourseCoverageEmployee = {
+  employeeId: string;
+  employeeUserId: string;
+  employeeCode: string;
+  name: string;
+  companyCode: string;
+  department: string;
+  section: string;
+  inTarget: boolean;
+  /** Start of the latest batch they actually trained in, or null if never. */
+  lastTrainedAt: string | null;
+  lastBatchName: string | null;
+  timesTrained: number;
+  /** Already holds a pending or approved seat in the batch being viewed. */
+  seatedNow: boolean;
+};
+
 export type CoursePriorHistoryRecord = {
   employeeId: string;
   employeeUserId: string;

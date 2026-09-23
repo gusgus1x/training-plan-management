@@ -48,8 +48,11 @@ import {
   MessageSquare,
   FileText,
   Search,
+  BarChart3,
+  BookOpen,
 } from "../../../icons/LucideIcons";
 import FilterSelect, { matchesFilter, type FilterOption } from "../../../FilterSelect";
+import CourseCoveragePanel from "./CourseCoveragePanel";
 import styles from "./TrainingAcceptSurvey.module.css";
 
 export const trainingAcceptSurveyModule = {
@@ -248,6 +251,20 @@ const formatFullName = (profile: { prefix?: string; firstName: string; lastName:
   const p = profile.prefix && profile.prefix !== "-" ? `${profile.prefix} ` : "";
   const l = profile.lastName && profile.lastName !== "-" ? ` ${profile.lastName}` : "";
   return `${p}${profile.firstName}${l}`.trim();
+};
+
+/**
+ * History by every key an employee is looked up by. The server sends the newest batch first, so the
+ * first record seen for a key is the latest one - later ones used to overwrite it with the oldest.
+ */
+const indexCourseHistory = (history: CoursePriorHistoryRecord[]) => {
+  const map = new Map<string, CoursePriorHistoryRecord>();
+  for (const item of history) {
+    for (const key of [item.employeeId, item.employeeCode, item.employeeUserId]) {
+      if (key && !map.has(key)) map.set(key, item);
+    }
+  }
+  return map;
 };
 
 /** An org name worth listing: the grid uses "-" for none. */
@@ -896,6 +913,9 @@ export default function TrainingAcceptSurvey({
   const [enrollments, setEnrollments] = useState<EnrollmentRecord[]>([]);
   const [draftSubmittedEmployees, setDraftSubmittedEmployees] = useState<SurveyEmployee[]>([]);
   const [courseHistoryMap, setCourseHistoryMap] = useState<Map<string, CoursePriorHistoryRecord>>(new Map());
+  // Which part below the course and its participants is on screen, as on the Training Record page.
+  const [sectionTab, setSectionTab] = useState<"approval" | "coverage" | "target" | "additional" | "all">("approval");
+  const showTab = (tab: typeof sectionTab) => sectionTab === tab || sectionTab === "all";
   const [isExportingAttendance, setIsExportingAttendance] = useState(false);
   const [isSendingLineNotify, setIsSendingLineNotify] = useState(false);
   const [showNominationModal, setShowNominationModal] = useState(false);
@@ -1129,13 +1149,7 @@ export default function TrainingAcceptSurvey({
     getCourseEnrollmentHistory({ planId: selectedCourse.id })
       .then((result) => {
         if (!active) return;
-        const map = new Map<string, CoursePriorHistoryRecord>();
-        (result.history || []).forEach((item) => {
-          if (item.employeeId) map.set(item.employeeId, item);
-          if (item.employeeCode) map.set(item.employeeCode, item);
-          if (item.employeeUserId) map.set(item.employeeUserId, item);
-        });
-        setCourseHistoryMap(map);
+        setCourseHistoryMap(indexCourseHistory(result.history || []));
       })
       .catch((error) => {
         console.error("Failed to load course prior history", error);
@@ -1167,13 +1181,7 @@ export default function TrainingAcceptSurvey({
         getCourseEnrollmentHistory({ planId: selectedCourse.id }).catch(() => ({ history: [] })),
       ]);
       setEnrollments(result.enrollments || []);
-      const map = new Map<string, CoursePriorHistoryRecord>();
-      (historyRes.history || []).forEach((item) => {
-        if (item.employeeId) map.set(item.employeeId, item);
-        if (item.employeeCode) map.set(item.employeeCode, item);
-        if (item.employeeUserId) map.set(item.employeeUserId, item);
-      });
-      setCourseHistoryMap(map);
+      setCourseHistoryMap(indexCourseHistory(historyRes.history || []));
     } catch (error) {
       console.error("Failed to reload candidates", error);
     }
@@ -1553,24 +1561,28 @@ export default function TrainingAcceptSurvey({
     }
   };
 
-  const handleAddEmployee = async (employee: SurveyEmployee) => {
-    if (!selectedCourse) return;
+  type AddOutcome = "added" | "draft" | "skipped" | "failed";
+
+  // `bulk` is the retrain box: it has already asked once for the whole group, so the per-person
+  // "already trained" question, the per-person toasts and the reload are left to its caller.
+  const addEmployee = async (employee: SurveyEmployee, bulk = false): Promise<AddOutcome> => {
+    if (!selectedCourse) return "skipped";
 
     if (!canNominateByPosition) {
       toast.error("ตำแหน่งของคุณไม่ถึงที่จะเข้าลิ้งค์ (คุณมีตำแหน่งไม่ถึงที่จะส่งคนเข้าอบรม)");
-      return;
+      return "failed";
     }
 
     if (selectedCourse.owner === "factory" && employee.company !== selectedCourse.ownerCompany) {
       toast.error(`หลักสูตรของโรงงาน ${selectedCourse.ownerCompany} สามารถส่งได้เฉพาะพนักงานของ ${selectedCourse.ownerCompany} เท่านั้น`);
-      return;
+      return "failed";
     }
 
     const priorHistory =
       courseHistoryMap.get(employee.id) ||
       (employee.employeeCode ? courseHistoryMap.get(employee.employeeCode) : undefined);
 
-    if (priorHistory) {
+    if (priorHistory && !bulk) {
       const batchLabel = priorHistory.batchNo ? `รุ่นที่ ${priorHistory.batchNo}` : (priorHistory.batchName || "");
       const yearLabel = priorHistory.planYear ? `ปี ${priorHistory.planYear}` : "";
       const historyText = [yearLabel, batchLabel].filter(Boolean).join(" ");
@@ -1592,7 +1604,7 @@ export default function TrainingAcceptSurvey({
           en: "Cancel",
         },
       });
-      if (!confirmed) return;
+      if (!confirmed) return "skipped";
     }
 
     if (roleMode === "factory" && selectedCourse?.owner === "center") {
@@ -1609,14 +1621,16 @@ export default function TrainingAcceptSurvey({
           candidate.status !== "Cancelled",
       );
       if (isAlreadyDraft || isAlreadyEnrolled) {
-        toast.info(`พนักงาน ${employee.employeeCode} อยู่ในรายการแล้ว`);
-        return;
+        if (!bulk) toast.info(`พนักงาน ${employee.employeeCode} อยู่ในรายการแล้ว`);
+        return "skipped";
       }
       setDraftSubmittedEmployees((prev) => [...prev, employee]);
-      toast.success(
-        `เพิ่ม ${employee.name} (${employee.employeeCode}) ในรายการเตรียมส่งแล้ว (กรุณากด "บันทึกและยืนยัน" ด้านบนเพื่อส่งให้ส่วนกลาง)`,
-      );
-      return;
+      if (!bulk) {
+        toast.success(
+          `เพิ่ม ${employee.name} (${employee.employeeCode}) ในรายการเตรียมส่งแล้ว (กรุณากด "บันทึกและยืนยัน" ด้านบนเพื่อส่งให้ส่วนกลาง)`,
+        );
+      }
+      return "draft";
     }
 
     try {
@@ -1626,15 +1640,38 @@ export default function TrainingAcceptSurvey({
         roleMode === "center" ? "HRD_CENTER" : "HRD_FACTORY",
         selectedCourse.title,
       );
-      if (!enrolled) return;
-      await reloadEnrollments();
-      toast.success(
-        `เพิ่ม ${employee.name} (${employee.employeeCode}) เข้าอบรมแล้ว / Added ${employee.employeeCode} to this course`,
-      );
+      if (!enrolled) return "skipped";
+      if (!bulk) {
+        await reloadEnrollments();
+        toast.success(
+          `เพิ่ม ${employee.name} (${employee.employeeCode}) เข้าอบรมแล้ว / Added ${employee.employeeCode} to this course`,
+        );
+      }
+      return "added";
     } catch (error) {
       console.error("Failed to add employee", error);
-      toast.error("เพิ่มพนักงานไม่สำเร็จ / Failed to add employee.");
+      if (!bulk) toast.error("เพิ่มพนักงานไม่สำเร็จ / Failed to add employee.");
+      return "failed";
     }
+  };
+
+  const handleAddEmployee = async (employee: SurveyEmployee) => {
+    await addEmployee(employee);
+  };
+
+  // The coverage panel's "send to retrain": one confirmation already given for the group.
+  const handleRetrain = async (employeeIds: string[]) => {
+    const outcomes: Record<AddOutcome, number> = { added: 0, draft: 0, skipped: 0, failed: 0 };
+    for (const id of employeeIds) {
+      const employee = masterEmployees.find((emp) => emp.id === id);
+      outcomes[employee ? await addEmployee(employee, true) : "failed"] += 1;
+    }
+    await reloadEnrollments();
+    if (outcomes.added) toast.success(`ส่งอบรมซ้ำ ${outcomes.added} คนแล้ว / ${outcomes.added} sent to retrain`);
+    if (outcomes.draft) {
+      toast.success(`เพิ่ม ${outcomes.draft} คนในรายการเตรียมส่งแล้ว (กด "บันทึกและยืนยัน" เพื่อส่งให้ส่วนกลาง)`);
+    }
+    if (outcomes.failed) toast.error(`ส่งไม่สำเร็จ ${outcomes.failed} คน / ${outcomes.failed} could not be sent`);
   };
 
   const handleApprove = async (enrollmentId: string) => {
@@ -2249,7 +2286,32 @@ export default function TrainingAcceptSurvey({
               </div>
             </section>
 
-            {canShowAcceptanceList ? (
+            <div className={styles.surveyNavTabs} role="tablist" aria-label="Survey sections">
+              {(
+                [
+                  { tab: "approval", icon: <ClipboardList size={16} />, th: "อนุมัติ / ส่งรายชื่อ", en: "Approval / submission" },
+                  { tab: "coverage", icon: <BarChart3 size={16} />, th: "ประวัติการอบรม & Retrain", en: "Training history & retrain" },
+                  { tab: "target", icon: <Target size={16} />, th: "กลุ่มเป้าหมาย", en: "Target group", count: availableTargetEmployees.length },
+                  { tab: "additional", icon: <Users size={16} />, th: "นอกกลุ่มเป้าหมาย", en: "Out of target", count: additionalEmployees.length },
+                  { tab: "all", icon: <BookOpen size={16} />, th: "แสดงทั้งหมด", en: "View all" },
+                ] as const
+              ).map((item) => (
+                <button
+                  key={item.tab}
+                  type="button"
+                  role="tab"
+                  aria-selected={sectionTab === item.tab}
+                  className={sectionTab === item.tab ? styles.surveyNavTabActive : styles.surveyNavTab}
+                  onClick={() => setSectionTab(item.tab)}
+                >
+                  {item.icon}
+                  <span>{isThai ? item.th : item.en}</span>
+                  {"count" in item ? <span className={styles.surveyTabBadge}>{item.count}</span> : null}
+                </button>
+              ))}
+            </div>
+
+            {canShowAcceptanceList && showTab("approval") ? (
               roleMode === "center" ? (
                 <section className={styles.approvalPanel} style={{ marginTop: "16px", marginBottom: "16px" }}>
                   <div className={styles.workspaceHeader}>
@@ -2748,10 +2810,23 @@ export default function TrainingAcceptSurvey({
             ) : null}
           </div>
 
-          {isTargetLoading ? (
+          {selectedCourse && showTab("coverage") ? (
+            <CourseCoveragePanel
+              planId={selectedCourse.id}
+              courseTitle={selectedCourse.title}
+              isCenter={roleMode === "center"}
+              ownCompany={userCompanyCode}
+              canSend={canNominateEmployees}
+              onRetrain={handleRetrain}
+            />
+          ) : null}
+
+          {!showTab("target") && !showTab("additional") ? null : isTargetLoading ? (
             <TypewriterLoader label={isThai ? "กำลังประมวลผลและดึงข้อมูลกลุ่มเป้าหมาย..." : "Loading target audience data..."} />
           ) : canNominateEmployees ? (
             <Fragment>
+              {showTab("target") ? (
+              <Fragment>
               <section className={styles.targetPanel}>
                 <div className={styles.workspaceHeader}>
                   <div>
@@ -2856,7 +2931,10 @@ export default function TrainingAcceptSurvey({
                     </div>
                   </section>
                 )}
+              </Fragment>
+              ) : null}
 
+              {showTab("additional") ? (
               <section className={styles.targetPanel}>
                 <div className={styles.workspaceHeader}>
                   <div>
@@ -2904,6 +2982,7 @@ export default function TrainingAcceptSurvey({
                   ) : null}
                 </div>
               </section>
+              ) : null}
             </Fragment>
           ) : null}
         </Fragment>
