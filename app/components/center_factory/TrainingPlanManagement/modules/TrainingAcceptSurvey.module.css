@@ -1741,7 +1741,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 10px 14px;
   padding: 10px 16px;
   background: var(--ui-60-surface-soft);
   border-bottom: 1px solid var(--ui-30-border);
@@ -1749,18 +1750,96 @@
   box-sizing: border-box;
 }
 
+.dropdownFiltersWrap {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.filterControlGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.filterControlLabel {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--ui-30-muted);
+  white-space: nowrap;
+}
+
+.dropdownFilterSelect {
+  appearance: none;
+  background-color: var(--ui-60-surface);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 6px;
+  padding: 6px 26px 6px 10px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ui-30-ink);
+  outline: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  max-width: 220px;
+}
+
+.dropdownFilterSelect:hover {
+  border-color: var(--ui-10-accent);
+}
+
+.dropdownFilterSelect:focus {
+  border-color: var(--ui-10-accent);
+  box-shadow: 0 0 0 2px var(--ui-10-accent-soft);
+}
+
+.activeFilterSelect {
+  border-color: var(--ui-10-accent);
+  background-color: var(--ui-10-accent-soft, rgba(0, 122, 61, 0.08));
+  color: var(--ui-10-accent, #007a3d);
+  font-weight: 700;
+}
+
+.searchIconInline {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ui-30-muted);
+  pointer-events: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  line-height: 1;
+}
+
+.searchIconInline svg {
+  display: block;
+  width: 15px;
+  height: 15px;
+}
+
 .dropdownSearchWrap {
   position: relative;
   display: flex;
   align-items: center;
   flex: 1;
-  max-width: 480px;
+  min-width: 180px;
+  max-width: 320px;
 }
 
+.dropdownSearchWrap .dropdownSearchInput,
 .dropdownSearchInput {
   width: 100%;
-  padding: 8px 34px 8px 12px;
-  font-size: 0.84rem;
+  padding: 7px 30px 7px 38px !important;
+  font-size: 0.82rem;
   font-weight: 500;
   border: 1px solid var(--ui-30-border);
   border-radius: 6px;
@@ -1768,6 +1847,7 @@
   color: var(--ui-30-ink);
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
 }
 
 .dropdownSearchInput:focus {
@@ -1777,20 +1857,63 @@
 
 .dropdownSearchClear {
   position: absolute;
-  right: 8px;
+  right: 6px;
   top: 50%;
   transform: translateY(-50%);
   background: none;
   border: none;
   color: var(--ui-30-muted);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   cursor: pointer;
   padding: 2px 4px;
   line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
 }
 
 .dropdownSearchClear:hover {
   color: var(--ui-30-ink);
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.resetFiltersBtn {
+  appearance: none;
+  background: transparent;
+  border: 1px dashed rgba(239, 68, 68, 0.5);
+  color: #ef4444;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 5px 9px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.resetFiltersBtn:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-style: solid;
+}
+
+:global([data-theme="dark"]) .dropdownFilterSelect,
+:global(.dark) .dropdownFilterSelect {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+
+:global([data-theme="dark"]) .activeFilterSelect,
+:global(.dark) .activeFilterSelect {
+  background-color: rgba(16, 185, 129, 0.16);
+  color: #34d399;
+  border-color: #10b981;
+}
+
+:global([data-theme="dark"]) .resetFiltersBtn:hover,
+:global(.dark) .resetFiltersBtn:hover {
+  background: rgba(239, 68, 68, 0.2);
 }
 
 .dropdownSearchCount {

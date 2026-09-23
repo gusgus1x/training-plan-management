@@ -935,19 +935,44 @@
 
 .selectedCompanyIndicator {
   position: absolute;
-  bottom: -6px;
+  bottom: -8px;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 0.58rem;
-  font-weight: 900;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3.5px;
+  font-size: 0.64rem;
+  font-weight: 700;
+  font-family: var(--font-geist-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  line-height: 1;
   color: #ffffff;
-  background: var(--ui-30-primary, #007a3d);
-  padding: 1px 5px;
+  background: linear-gradient(135deg, #059669 0%, #007a3d 100%);
+  padding: 2.5px 7px 2.5px 5.5px;
   border-radius: 999px;
   white-space: nowrap;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-  z-index: 3;
-  letter-spacing: 0.02em;
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 122, 61, 0.25);
+  z-index: 4;
+  letter-spacing: 0.03em;
+  pointer-events: none;
+  animation: indicatorPop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.selectedCompanyIndicator svg {
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+@keyframes indicatorPop {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
 }
 
 :global([data-theme="dark"]) .selectedCompanyBanner,
@@ -982,6 +1007,14 @@
 :global([data-theme="dark"]) .affiliateLogoCardActive .affiliateLogoWrapper,
 :global(.dark) .affiliateLogoCardActive .affiliateLogoWrapper {
   filter: drop-shadow(0 0 12px rgba(52, 211, 153, 0.85)) !important;
+}
+
+:global([data-theme="dark"]) .selectedCompanyIndicator,
+:global(.dark) .selectedCompanyIndicator {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5), 0 0 10px rgba(16, 185, 129, 0.35);
 }
 
 .previewAccess {
