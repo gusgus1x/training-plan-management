@@ -2,6 +2,8 @@ import { NextRequest } from "next/server";
 import { describe, expect, it, vi } from "vitest";
 import { createCreateEnrollmentHandler } from "../../app/api/training-plan/enrollments/route";
 import type { EnrollmentService } from "../../app/lib/trainingEnrollment/service";
+import { mayNominate } from "../../app/lib/trainingEnrollment/nomination";
+import { ApiError } from "../../app/lib/api/errors";
 import type { AuthenticatedPrincipal } from "../../app/lib/auth/types";
 
 /**
@@ -114,17 +116,50 @@ describe("enrollment creation scope", () => {
       positionName: "Section Head",
     };
     const service = createService();
-    const handler = createCreateEnrollmentHandler({ service, auth: auth(sectionHead) });
+    const assertCanNominate = vi.fn().mockResolvedValue("USER-202");
+    const handler = createCreateEnrollmentHandler({ service, auth: auth(sectionHead), assertCanNominate });
 
     const response = await handler(
-      post({ planId: "9", employeeId: "202", employeeUserId: "USER-202", source: "EMPLOYEE" }),
+      post({
+        planId: "9",
+        employeeId: "202",
+        employeeUserId: "USER-202",
+        source: "EMPLOYEE",
+        approverUserId: "77",
+        acknowledgePrerequisite: true,
+      }),
     );
 
     expect(response.status).toBe(201);
+    expect(assertCanNominate).toHaveBeenCalledOnce();
     const input = inputOf(service);
-    expect(input.employeeId).toBe("202");
     expect(input.employeeUserId).toBe("USER-202");
     expect(input.source).toBe("EMPLOYEE");
+    // Goes to HRD, not to an approver the client named, and cannot wave prerequisites through.
+    expect(input.approverUserId).toBeNull();
+    expect(input.acknowledgePrerequisite).toBe(false);
+  });
+
+  it("does not enroll someone the nomination guard refuses", async () => {
+    const sectionHead: AuthenticatedPrincipal = { ...base, positionCode: "SH", positionName: "Section Head" };
+    const service = createService();
+    const assertCanNominate = vi.fn().mockRejectedValue(
+      new ApiError({ code: "FORBIDDEN", message: "ส่งได้เฉพาะพนักงานที่ตำแหน่งต่ำกว่าตัวเอง", status: 403 }),
+    );
+    const handler = createCreateEnrollmentHandler({ service, auth: auth(sectionHead), assertCanNominate });
+
+    const response = await handler(post({ planId: "9", employeeId: "202", employeeUserId: "USER-202", source: "EMPLOYEE" }));
+
+    expect(response.status).toBe(403);
+    expect(service.createEnrollment).not.toHaveBeenCalled();
+  });
+
+  it("ranks who may send whom by the 12-step ladder", () => {
+    expect(mayNominate(12, 18)).toBe(true); // Section Head sends staff
+    expect(mayNominate(12, 12)).toBe(false); // not another Section Head
+    expect(mayNominate(11, 12)).toBe(true); // Manager sends a Section Head
+    expect(mayNominate(11, 10)).toBe(false); // not their GM
+    expect(mayNominate(13, 18)).toBe(false); // below Section Head sends nobody
   });
 
   it("refuses an employee below Section Head trying to enroll another employee", async () => {

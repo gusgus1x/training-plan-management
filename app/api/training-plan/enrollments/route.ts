@@ -5,10 +5,15 @@ import { readJsonObject } from "../../../lib/api/validation";
 import { createProtectedRoute, type ProtectedRouteOptions } from "../../../lib/auth/guard";
 import { requireEmployeeOwnership } from "../../../lib/auth/authorization";
 import { isSectionHeadOrAbove } from "../../../lib/employeeMasterData";
+import { assertCanNominate } from "../../../lib/trainingEnrollment/nomination";
 import { enrollmentService, type EnrollmentService } from "../../../lib/trainingEnrollment/service";
 import { parseCreateEnrollment, parseEnrollmentListFilters } from "../../../lib/trainingEnrollment/validation";
 
-type Dependencies = { auth?: ProtectedRouteOptions; service?: EnrollmentService };
+type Dependencies = {
+  auth?: ProtectedRouteOptions;
+  service?: EnrollmentService;
+  assertCanNominate?: typeof assertCanNominate;
+};
 
 const allRoles = ["HRD_CENTER", "HRD_FACTORY", "EMPLOYEE"] as const;
 const options = (auth?: ProtectedRouteOptions) => ({ ...auth, allowedRoles: allRoles });
@@ -55,6 +60,10 @@ export const createCreateEnrollmentHandler = (dependencies: Dependencies = {}) =
             status: 403,
           });
         }
+        // Pinned to the row the guard checked, and sent to HRD rather than to a named approver.
+        input.employeeUserId = await (dependencies.assertCanNominate ?? assertCanNominate)(principal, input);
+        input.approverUserId = null;
+        input.acknowledgePrerequisite = false;
         input.source = "EMPLOYEE";
       } else {
         requireEmployeeOwnership(principal, input.employeeId, input.employeeUserId);

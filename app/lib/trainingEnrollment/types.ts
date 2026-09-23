@@ -237,6 +237,27 @@ export type EnrollmentRecord = {
   attendance: AttendanceRecord | null;
 };
 
+/**
+ * One filterable field: what a dropdown shows, plus every spelling it answers to (Thai, English,
+ * and for a company its code), so a search in either language finds the same people.
+ */
+export type NomineeField = { label: string; values: string[] };
+
+/** An employee a head may send to a batch (see nomination.ts). */
+export type Nominee = {
+  employeeUserId: string;
+  employeeCode: string;
+  name: string;
+  position: string;
+  company: NomineeField;
+  division: NomineeField;
+  department: NomineeField;
+  section: NomineeField;
+  person: NomineeField;
+  outOfTarget: boolean;
+  alreadyEnrolled: boolean;
+};
+
 export type CreateEnrollmentInput = {
   planId: string;
   /** Surrogate employee id. Legacy during Phase 20; employeeUserId is preferred. */

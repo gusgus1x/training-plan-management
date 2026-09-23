@@ -135,6 +135,10 @@ const statusClass: Record<EnrollmentStatus, string> = {
   Cancelled: styles.statusTarget,
 };
 
+/** Heads may send people outside the course's target group; HRD sees that before approving. */
+const outOfTargetNote = (candidate: { targetMatchStatus?: string }) =>
+  candidate.targetMatchStatus === "NOT_MATCHED" ? " · นอกเป้าหมาย" : "";
+
 const sourceLabel: Record<EnrollmentSource, string> = {
   EMPLOYEE: "Employee Registration",
   HRD_FACTORY: "Submitted by Factory",
@@ -2167,7 +2171,7 @@ export default function TrainingAcceptSurvey({
                             <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>
                               {candidate.status === "Pending Approval" ? (
                                 <span className={styles.badgePending}>
-                                  <span className={styles.glowingDotBlue}></span> รออนุมัติ
+                                  <span className={styles.glowingDotBlue}></span> รออนุมัติ{outOfTargetNote(candidate)}
                                 </span>
                               ) : candidate.status === "Center Approved" || candidate.status === "Factory Approved" ? (
                                 <span className={styles.badgeApproved}>
@@ -2400,7 +2404,7 @@ export default function TrainingAcceptSurvey({
                                   <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>
                                     {candidate.status === "Pending Approval" ? (
                                       <span className={styles.badgePending}>
-                                        <span className={styles.glowingDotBlue}></span> รออนุมัติ
+                                        <span className={styles.glowingDotBlue}></span> รออนุมัติ{outOfTargetNote(candidate)}
                                       </span>
                                     ) : candidate.status === "Center Approved" || candidate.status === "Factory Approved" ? (
                                       <span className={styles.badgeApproved}>
@@ -2533,7 +2537,7 @@ export default function TrainingAcceptSurvey({
                             <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>
                               {candidate.status === "Pending Approval" ? (
                                 <span className={styles.badgePending}>
-                                  <span className={styles.glowingDotYellow}></span> รออนุมัติ
+                                  <span className={styles.glowingDotYellow}></span> รออนุมัติ{outOfTargetNote(candidate)}
                                 </span>
                               ) : candidate.status === "Factory Approved" || candidate.status === "Center Approved" ? (
                                 <span className={styles.badgeApproved}>

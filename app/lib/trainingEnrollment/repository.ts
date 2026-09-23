@@ -23,7 +23,7 @@ type DatabaseClient = Pick<PrismaClient, "training_enrollment" | "training_plan"
 
 const forbidden = (message: string) => new ApiError({ code: "FORBIDDEN", message, status: 403 });
 
-const employeeInclude = {
+export const employeeInclude = {
   company: true,
   organization_function: true,
   section: true,
@@ -400,12 +400,8 @@ const mapEnrollment = (row: EnrollmentWithRelations) => {
   };
 };
 
-export const computeTargetMatch = async (
-  db: DatabaseClient,
-  courseId: bigint,
-  employee: EmployeeWithRelations,
-) => {
-  const standards = await db.course_standard_course.findMany({
+export const loadTargetStandards = (db: DatabaseClient, courseId: bigint) =>
+  db.course_standard_course.findMany({
     where: { course_id: courseId },
     include: {
       course_standard_target_position: true,
@@ -414,6 +410,22 @@ export const computeTargetMatch = async (
     },
   });
 
+export const computeTargetMatch = async (
+  db: DatabaseClient,
+  courseId: bigint,
+  employee: EmployeeWithRelations,
+) => matchTargetAgainst(await loadTargetStandards(db, courseId), employee);
+
+type TargetEmployee = Pick<
+  EmployeeWithRelations,
+  "level_id" | "position_id" | "function_id" | "division_id" | "department_id" | "section_id" | "company_id"
+>;
+
+/** The match itself, over standards already loaded - so a list of employees costs one query, not one each. */
+export const matchTargetAgainst = (
+  standards: Awaited<ReturnType<typeof loadTargetStandards>>,
+  employee: TargetEmployee,
+) => {
   if (standards.length === 0) {
     return { targetMatchStatus: "NOT_MATCHED" as const, levelMatchStatus: "NOT_REQUIRED" as const, standardCourseId: null as bigint | null };
   }
@@ -522,7 +534,7 @@ export const missingPrerequisites = async (
     .map((p) => ({ courseCode: p.prerequisite_course.course_code, courseName: p.prerequisite_course.course_name }));
 };
 
-const loadPlanScope = async (db: DatabaseClient, planId: bigint) => {
+export const loadPlanScope = async (db: DatabaseClient, planId: bigint) => {
   const plan = await db.training_plan.findUniqueOrThrow({
     where: { plan_id: planId },
     include: { training_plan_oap: { select: { course_id: true, company_id: true } } },

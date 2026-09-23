@@ -10,6 +10,7 @@ import {
 import {
   createEnrollment,
   listEnrollments,
+  listNominees,
   updateEnrollmentStatus,
 } from "../../lib/trainingEnrollment/client";
 import {
@@ -25,6 +26,7 @@ import {
 import { useUiLanguage } from "../ThaiUiLocalization";
 import type { UserModule } from "./data";
 import ModuleHeader from "./ModuleHeader";
+import NominateEmployeesDialog from "./NominateEmployeesDialog";
 import SearchableApproverSelect from "./SearchableApproverSelect";
 import { getLocalDateString } from "../../lib/calendarDate";
 import styles from "./RegisterTrainingModule.module.css";
@@ -287,6 +289,15 @@ export default function RegisterTrainingModule({
     targetRankInfo: { rank: number; nameTh: string; nameEn: string } | null;
   } | null>(null);
   const [isLoadingApprovers, setIsLoadingApprovers] = useState(false);
+
+  // Section Head and above may send people ranked below them; the server decides who that is.
+  const [canNominate, setCanNominate] = useState(false);
+  const [nominatingCourse, setNominatingCourse] = useState<AvailableCourseItem | null>(null);
+  useEffect(() => {
+    listNominees(null)
+      .then((result) => setCanNominate(result.canNominate))
+      .catch(() => setCanNominate(false));
+  }, []);
 
   const reloadPendingApprovals = () => {
     fetch("/api/training-plan/enrollments?pendingForApprover=true", { credentials: "include", cache: "no-store" })
@@ -1006,6 +1017,11 @@ export default function RegisterTrainingModule({
                   >
                     {isExpanded ? t("ซ่อนรายละเอียด", "Hide detail") : t("รายละเอียดกลุ่มเป้าหมาย", "Target Group Details")}
                   </button>
+                  {canNominate && !isEnded ? (
+                    <button className={styles.nominateBtn} type="button" onClick={() => setNominatingCourse(course)}>
+                      {t("ส่งพนักงานเข้าอบรม", "Send employees")}
+                    </button>
+                  ) : null}
                   {isEnded ? (
                     <button className={styles.endedBtn} type="button" disabled>
                       {isRegistered ? t("เข้าร่วมอบรมแล้ว", "Attended") : t("ผ่านเวลาไปแล้วไม่สามารถลงได้", "Past deadline - Cannot register")}
@@ -1296,6 +1312,9 @@ export default function RegisterTrainingModule({
             document.body
           )
         : null}
+      {isMounted && nominatingCourse ? (
+        <NominateEmployeesDialog course={nominatingCourse} onClose={() => setNominatingCourse(null)} />
+      ) : null}
     </main>
   );
 }
