@@ -233,8 +233,9 @@ const ATTENDEE_COLUMNS = [
   { key: "company", th: "บริษัท", en: "Company", width: 100 },
   { key: "function", th: "สายงาน", en: "Function", width: 160 },
   { key: "division", th: "ฝ่าย", en: "Division", width: 150 },
-  { key: "department", th: "แผนก", en: "Department", width: 150 },
-  { key: "section", th: "ส่วน", en: "Section", width: 150 },
+  // department rows are named ส่วน… and section rows แผนก… in the database, each section under one department.
+  { key: "department", th: "ส่วน", en: "Department", width: 150 },
+  { key: "section", th: "แผนก", en: "Section", width: 150 },
   { key: "position", th: "ตำแหน่ง", en: "Position", width: 140 },
   { key: "preScore", th: "คะแนน Pre-Test", en: "Pre-Test Score", width: 120 },
   { key: "postScore", th: "คะแนน Post-Test", en: "Post-Test Score", width: 120 },
@@ -1622,7 +1623,8 @@ export default function TrainingRecord() {
                     <th>UserID</th>
                     <th>{isThai ? "พนักงาน" : "Employee"}</th>
                     <th>{isThai ? "บริษัท" : "Company"}</th>
-                    <th>{isThai ? "แผนก" : "Department"}</th>
+                    {/* attendee.department carries the function (repository.ts), not a department. */}
+                    <th>{isThai ? "สายงาน" : "Function"}</th>
                     <th style={{ textAlign: "center" }}>{isThai ? "คะแนน Pre-Test" : "Pre-Test Score"}</th>
                     <th style={{ textAlign: "center" }}>{isThai ? "คะแนน Post-Test" : "Post-Test Score"}</th>
                     <th style={{ textAlign: "center" }}>{isThai ? "การเปลี่ยนแปลง" : "Diff"}</th>
