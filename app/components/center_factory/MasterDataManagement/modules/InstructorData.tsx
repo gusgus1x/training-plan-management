@@ -37,6 +37,7 @@ export const instructorDataModule = {
 
 type InstructorForm = {
   instructorCode: string;
+  title: string;
   firstName: string;
   lastName: string;
   telephone: string;
@@ -49,6 +50,7 @@ type InstructorForm = {
 
 const blankForm = (): InstructorForm => ({
   instructorCode: "",
+  title: "",
   firstName: "",
   lastName: "",
   telephone: "",
@@ -61,6 +63,7 @@ const blankForm = (): InstructorForm => ({
 
 const toForm = (record: InstructorRecord): InstructorForm => ({
   instructorCode: record.instructorCode,
+  title: record.title ?? "",
   firstName: record.firstName,
   lastName: record.lastName,
   telephone: record.telephone ?? "",
@@ -75,6 +78,22 @@ const errorText = (error: unknown) =>
   error instanceof InstructorClientError
     ? error.message
     : "Unable to load instructor data. Please try again.";
+
+const TITLE_PRESETS = [
+  "นาย",
+  "นาง",
+  "นางสาว",
+  "น.ส.",
+  "ดร.",
+  "ผศ.ดร.",
+  "รศ.ดร.",
+  "ศ.ดร.",
+  "อาจารย์",
+  "Mr.",
+  "Mrs.",
+  "Ms.",
+  "Dr.",
+] as const;
 
 const CODE_PATTERN = /^([A-Za-z]+)(\d+)$/;
 const nextAutoCode = (existingCodes: string[], fallbackPrefix: string) => {
@@ -146,6 +165,7 @@ export default function InstructorData() {
     return rows.filter((row) =>
       [
         row.instructorCode,
+        row.title,
         row.firstName,
         row.lastName,
         row.telephone,
@@ -260,6 +280,7 @@ export default function InstructorData() {
     try {
       const input = {
         instructorCode: normalizedCode,
+        title: form.title.trim() || null,
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
         telephone: form.telephone.trim() || null,
@@ -291,10 +312,11 @@ export default function InstructorData() {
       setEditingInstructorId(null);
       setFormMode(null);
       setForm(blankForm());
+      const displayName = [result.instructor.title, result.instructor.firstName, result.instructor.lastName].filter(Boolean).join(" ");
       toast.success(
         isThai
-          ? `บันทึกข้อมูล ${result.instructor.instructorCode} - ${result.instructor.firstName} ${result.instructor.lastName} สำเร็จ`
-          : `Saved ${result.instructor.instructorCode} - ${result.instructor.firstName} ${result.instructor.lastName}`,
+          ? `บันทึกข้อมูล ${result.instructor.instructorCode} - ${displayName} สำเร็จ`
+          : `Saved ${result.instructor.instructorCode} - ${displayName}`,
       );
     } catch (caught: unknown) {
       setError(errorText(caught));
@@ -612,6 +634,45 @@ export default function InstructorData() {
               />
             </label>
             <label>
+              {isThai ? "คำนำหน้า" : "Title"}
+              <input
+                list="instructor-title-options"
+                value={form.title}
+                maxLength={50}
+                placeholder={isThai ? "เลือกหรือพิมพ์ เช่น นาย, นางสาว, ผศ.ดร." : "Select or type, e.g. Mr., Ms., Dr."}
+                onChange={(event) => change("title", event.target.value)}
+                autoComplete="off"
+              />
+              <datalist id="instructor-title-options">
+                {TITLE_PRESETS.map((preset) => (
+                  <option key={preset} value={preset} />
+                ))}
+              </datalist>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginTop: "3px" }}>
+                {["นาย", "นาง", "นางสาว", "ผศ.ดร."].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => change("title", preset)}
+                    title={isThai ? `คลิกเพื่อเลือก ${preset}` : `Click to select ${preset}`}
+                    style={{
+                      fontSize: "0.72rem",
+                      padding: "2px 8px",
+                      borderRadius: "6px",
+                      border: form.title === preset ? "1px solid var(--ui-30-primary)" : "1px solid var(--ui-30-border)",
+                      background: form.title === preset ? "var(--ui-30-primary-soft)" : "var(--ui-60-surface-soft)",
+                      color: form.title === preset ? "var(--ui-30-primary)" : "var(--ui-30-muted)",
+                      cursor: "pointer",
+                      fontWeight: form.title === preset ? 700 : 500,
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
+            </label>
+            <label>
               {isThai ? "ชื่อ" : "First Name"}
               <input
                 value={form.firstName}
@@ -720,7 +781,9 @@ export default function InstructorData() {
               <tr>
                 <th className={styles.colIndex}>{isThai ? "ลำดับ" : "No."}</th>
                 <th className={styles.colCode}>{isThai ? "รหัสวิทยากร" : "Instructor Code"}</th>
-                <th className={styles.colName}>{isThai ? "ชื่อ - นามสกุล" : "Name - Surname"}</th>
+                <th className={styles.colTitle}>{isThai ? "คำนำหน้า" : "Title"}</th>
+                <th className={styles.colFirstName}>{isThai ? "ชื่อ" : "First Name"}</th>
+                <th className={styles.colLastName}>{isThai ? "นามสกุล" : "Last Name"}</th>
                 <th className={styles.colPhone}>{isThai ? "เบอร์โทรศัพท์" : "Phone"}</th>
                 <th className={styles.colEmail}>{isThai ? "อีเมล" : "Email"}</th>
                 <th className={styles.colEdu}>{isThai ? "วุฒิการศึกษา" : "Education"}</th>
@@ -747,9 +810,11 @@ export default function InstructorData() {
                   <td className={styles.colCode}>
                     <span className={styles.codeBadge}>{row.instructorCode}</span>
                   </td>
-                  <td className={styles.colName}>
-                    <strong>{row.firstName} {row.lastName}</strong>
+                  <td className={styles.colTitle}>{row.title || "-"}</td>
+                  <td className={styles.colFirstName}>
+                    <strong>{row.firstName}</strong>
                   </td>
+                  <td className={styles.colLastName}>{row.lastName || "-"}</td>
                   <td className={styles.colPhone}>{row.telephone || "-"}</td>
                   <td className={styles.colEmail}>{row.email || "-"}</td>
                   <td className={styles.colEdu}>{row.education || "-"}</td>
@@ -759,7 +824,7 @@ export default function InstructorData() {
               ))}
               {!isLoading && visibleRows.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: "center", padding: "24px", color: "var(--ui-30-muted)" }}>
+                  <td colSpan={10} style={{ textAlign: "center", padding: "24px", color: "var(--ui-30-muted)" }}>
                     {isThai ? "ไม่พบข้อมูลวิทยากร" : "No instructor data found."}
                   </td>
                 </tr>
@@ -976,7 +1041,9 @@ export default function InstructorData() {
                           <th>{isThai ? "แถว" : "Row"}</th>
                           <th>{isThai ? "สถานะ" : "Status"}</th>
                           <th>{isThai ? "รหัสวิทยากร" : "Instructor Code"}</th>
-                          <th>{isThai ? "ชื่อ - นามสกุล" : "Name - Surname"}</th>
+                          <th>{isThai ? "คำนำหน้า" : "Title"}</th>
+                          <th>{isThai ? "ชื่อ" : "First Name"}</th>
+                          <th>{isThai ? "นามสกุล" : "Last Name"}</th>
                           <th>{isThai ? "เบอร์โทรศัพท์" : "Phone"}</th>
                           <th>{isThai ? "อีเมล" : "Email"}</th>
                           <th>{isThai ? "วุฒิการศึกษา" : "Education"}</th>
@@ -1017,9 +1084,11 @@ export default function InstructorData() {
                                 </span>
                               )}
                             </td>
+                            <td>{r.title || "-"}</td>
                             <td>
-                              {r.firstName} {r.lastName}
+                              <strong>{r.firstName}</strong>
                             </td>
+                            <td>{r.lastName || "-"}</td>
                             <td>{r.telephone || "-"}</td>
                             <td>{r.email || "-"}</td>
                             <td>{r.education || "-"}</td>
@@ -1040,7 +1109,7 @@ export default function InstructorData() {
                         ))}
                         {filteredImportRows.length === 0 && (
                           <tr>
-                            <td colSpan={10} style={{ textAlign: "center", padding: "20px", color: "var(--ui-30-muted)" }}>
+                            <td colSpan={12} style={{ textAlign: "center", padding: "20px", color: "var(--ui-30-muted)" }}>
                               {isThai ? "ไม่พบรายการตามเงื่อนไข" : "No items matching filter"}
                             </td>
                           </tr>

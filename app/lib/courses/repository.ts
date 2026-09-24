@@ -44,27 +44,28 @@ const safeBigInt = (val: string | null | undefined): bigint | null => {
   }
 };
 
-const maxCourseCodeSeq = (courses: { course_code: string }[]) => {
-  let maxSeq = 0;
+export const findNextAvailableCourseCodeSeq = (courses: { course_code: string }[]): number => {
+  const usedSeqs = new Set<number>();
   for (const c of courses) {
-    const parts = c.course_code.split("-");
+    const parts = (c.course_code || "").split("-");
     const num = parseInt(parts[parts.length - 1], 10);
-    if (!isNaN(num) && num > maxSeq) {
-      maxSeq = num;
+    if (!isNaN(num) && num > 0) {
+      usedSeqs.add(num);
     }
   }
-  return maxSeq;
+  let candidate = 1;
+  while (usedSeqs.has(candidate)) {
+    candidate++;
+  }
+  return candidate;
 };
 
-// HRD_CENTER courses keep the original "<group>-<seq>" code, numbered from the
-// group's own monotonic counter (last_course_number) so a code is never reused
-// even after the highest-numbered course is deleted.
+// HRD_CENTER courses keep the "<group>-<seq>" code (e.g. "MT-000018"), filling in
+// any vacant gap sequence numbers starting from 000001 before advancing beyond the max.
 //
 // HRD_FACTORY courses are prefixed with the creating company's code
-// ("<company>-<group>-<seq>") and numbered independently per company, mirroring
-// how employee codes are already scoped per company_id elsewhere in this app —
-// each company gets its own code space starting at 000001, instead of sharing
-// one running number with the center and every other company.
+// ("<company>-<group>-<seq>") and numbered independently per company, also filling in
+// any vacant gap sequence numbers starting from 000001.
 const generateCourseCode = async (
   tx: Prisma.TransactionClient,
   courseGroupId: bigint,
@@ -78,16 +79,15 @@ const generateCourseCode = async (
 
   if (companyId === null) {
     const existingCourses = await tx.course.findMany({
-      where: { course_group_id: courseGroupId },
+      where: { course_group_id: courseGroupId, company_id: null },
       select: { course_code: true },
     });
 
-    const maxSeq = maxCourseCodeSeq(existingCourses);
-    const nextSeq = maxSeq + 1;
+    const nextSeq = findNextAvailableCourseCodeSeq(existingCourses);
 
     await tx.course_group.update({
       where: { course_group_id: courseGroupId },
-      data: { last_course_number: nextSeq },
+      data: { last_course_number: Math.max(group.last_course_number ?? 0, nextSeq) },
     });
 
     return `${group.course_group_code.trim()}-${String(nextSeq).padStart(6, "0")}`;
@@ -103,7 +103,7 @@ const generateCourseCode = async (
     where: { course_group_id: courseGroupId, company_id: companyId },
     select: { course_code: true },
   });
-  const nextCompanySeq = maxCourseCodeSeq(companyCourses) + 1;
+  const nextCompanySeq = findNextAvailableCourseCodeSeq(companyCourses);
 
   return `${company.company_code.trim()}-${group.course_group_code.trim()}-${String(nextCompanySeq).padStart(6, "0")}`;
 };

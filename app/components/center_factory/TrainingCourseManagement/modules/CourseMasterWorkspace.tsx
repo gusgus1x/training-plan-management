@@ -88,7 +88,7 @@ type CourseForm = {
   courseGroup: string;
 };
 
-type CourseRecord = WorkflowCourse;
+export type CourseRecord = WorkflowCourse;
 type CourseStandardRecord = WorkflowStandard;
 
 type LinkModeField = "preTest" | "postTest" | "evaluation" | "evaluationAfter30Day";
@@ -100,6 +100,36 @@ const deriveLinkModeFields = (course: CourseRecord): Set<LinkModeField> => {
   if (course.evaluationLink?.trim()) fields.push("evaluation");
   if (course.evaluationAfter30DayLink?.trim()) fields.push("evaluationAfter30Day");
   return new Set(fields);
+};
+
+export const findNextAvailableCourseSeq = (
+  courseList: CourseRecord[],
+  targetCourseGroup: string,
+  userCompCode?: string | null,
+  isFactory?: boolean,
+): number => {
+  const relevantCourses = courseList.filter((c) => {
+    if (c.courseGroup !== targetCourseGroup) return false;
+    if (isFactory && userCompCode) {
+      return c.ownerCompany === userCompCode;
+    }
+    return !c.ownerCompany || c.ownerCompany === "HRD Center" || c.owner === "CENTER";
+  });
+
+  const usedSeqs = new Set<number>();
+  for (const c of relevantCourses) {
+    const parts = (c.courseCode || "").split("-");
+    const num = parseInt(parts[parts.length - 1], 10);
+    if (!isNaN(num) && num > 0) {
+      usedSeqs.add(num);
+    }
+  }
+
+  let candidate = 1;
+  while (usedSeqs.has(candidate)) {
+    candidate++;
+  }
+  return candidate;
 };
 
 type TrainingAssessmentOption = {
@@ -1291,31 +1321,11 @@ function CourseMaster() {
     let nextCode = "";
     const matchedGroup = courseGroupOptions.find((g) => g.name === courseGroup);
     if (matchedGroup && matchedGroup.code) {
+      const nextSeq = findNextAvailableCourseSeq(courses, courseGroup, userCompanyCode, isFactoryUser);
       if (isFactoryUser) {
-        const companyGroupCourses = courses.filter(
-          (c) => c.courseGroup === courseGroup && c.ownerCompany === userCompanyCode,
-        );
-        let maxSeq = 0;
-        for (const c of companyGroupCourses) {
-          const parts = (c.courseCode || "").split("-");
-          const num = parseInt(parts[parts.length - 1], 10);
-          if (!isNaN(num) && num > maxSeq) {
-            maxSeq = num;
-          }
-        }
-        nextCode = `${userCompanyCode}-${matchedGroup.code.trim()}-${String(maxSeq + 1).padStart(6, "0")}`;
+        nextCode = `${userCompanyCode}-${matchedGroup.code.trim()}-${String(nextSeq).padStart(6, "0")}`;
       } else {
-        const groupCourses = courses.filter((c) => c.courseGroup === courseGroup);
-        let maxSeq = 0;
-        for (const c of groupCourses) {
-          const parts = (c.courseCode || "").split("-");
-          const num = parseInt(parts[parts.length - 1], 10);
-          if (!isNaN(num) && num > maxSeq) {
-            maxSeq = num;
-          }
-        }
-        const nextNum = groupCourses.length === 0 ? 1 : Math.max(maxSeq + 1, (matchedGroup.lastCourseNumber ?? 0) + 1);
-        nextCode = `${matchedGroup.code.trim()}-${String(nextNum).padStart(6, "0")}`;
+        nextCode = `${matchedGroup.code.trim()}-${String(nextSeq).padStart(6, "0")}`;
       }
     }
 
@@ -1795,35 +1805,13 @@ function CourseMaster() {
     if (matchedGroup && matchedGroup.code) {
       if (selectedCourse && selectedCourse.courseGroup === courseGroup && selectedCourse.courseCode) {
         nextCode = selectedCourse.courseCode;
-      } else if (isFactoryUser) {
-        // Preview only — mirrors the per-company numbering the server assigns in
-        // app/lib/courses/repository.ts's generateCourseCode. Each company has its
-        // own code space ("<company>-<group>-<seq>"), independent from the center
-        // and every other company.
-        const companyGroupCourses = courses.filter(
-          (c) => c.courseGroup === courseGroup && c.ownerCompany === userCompanyCode,
-        );
-        let maxSeq = 0;
-        for (const c of companyGroupCourses) {
-          const parts = (c.courseCode || "").split("-");
-          const num = parseInt(parts[parts.length - 1], 10);
-          if (!isNaN(num) && num > maxSeq) {
-            maxSeq = num;
-          }
-        }
-        nextCode = `${userCompanyCode}-${matchedGroup.code.trim()}-${String(maxSeq + 1).padStart(6, "0")}`;
       } else {
-        const groupCourses = courses.filter((c) => c.courseGroup === courseGroup);
-        let maxSeq = 0;
-        for (const c of groupCourses) {
-          const parts = (c.courseCode || "").split("-");
-          const num = parseInt(parts[parts.length - 1], 10);
-          if (!isNaN(num) && num > maxSeq) {
-            maxSeq = num;
-          }
+        const nextSeq = findNextAvailableCourseSeq(courses, courseGroup, userCompanyCode, isFactoryUser);
+        if (isFactoryUser) {
+          nextCode = `${userCompanyCode}-${matchedGroup.code.trim()}-${String(nextSeq).padStart(6, "0")}`;
+        } else {
+          nextCode = `${matchedGroup.code.trim()}-${String(nextSeq).padStart(6, "0")}`;
         }
-        const nextNum = groupCourses.length === 0 ? 1 : Math.max(maxSeq + 1, (matchedGroup.lastCourseNumber ?? 0) + 1);
-        nextCode = `${matchedGroup.code.trim()}-${String(nextNum).padStart(6, "0")}`;
       }
     }
     setForm((current) => ({

@@ -3,6 +3,7 @@ import zlib from "zlib";
 export type InstructorImportRow = {
   rowNum: number;
   instructorCode: string;
+  title: string | null;
   firstName: string;
   lastName: string;
   telephone: string | null;
@@ -176,6 +177,7 @@ export function parseInstructorXlsxBuffer(buffer: Buffer): InstructorImportRow[]
   };
 
   const codeCol = findCol("รหัสวิทยากร", "instructor code", "instructor_code", "รหัส");
+  const titleCol = findCol("คำนำหน้า", "คำนำหน้านาม", "title", "prefix");
   const firstCol = findCol("ชื่อ", "first name", "firstname", "first_name", "ชื่อวิทยากร", "fname");
   const lastCol = findCol("นามสกุล", "last name", "lastname", "last_name", "นามสกุลวิทยากร", "lname");
   const phoneCol = findCol("เบอร์โทรศัพท์", "เบอร์โทร", "telephone", "phone", "tel", "mobile");
@@ -191,6 +193,7 @@ export function parseInstructorXlsxBuffer(buffer: Buffer): InstructorImportRow[]
   for (let i = headerRowIndex + 1; i < rawRows.length; i++) {
     const cells = rawRows[i].cells;
     const instructorCode = codeCol && cells[codeCol] ? cells[codeCol].trim() : "";
+    const title = titleCol && cells[titleCol] ? cells[titleCol].trim() || null : null;
     const firstName = firstCol && cells[firstCol]
       ? cells[firstCol].trim()
       : (codeCol ? cells["B"] || "" : cells["A"] || "").trim();
@@ -231,6 +234,7 @@ export function parseInstructorXlsxBuffer(buffer: Buffer): InstructorImportRow[]
     rows.push({
       rowNum: rawRows[i].rNum,
       instructorCode: instructorCode ? instructorCode.toUpperCase() : "",
+      title,
       firstName,
       lastName,
       telephone: telephone || null,
@@ -290,6 +294,7 @@ export function parseInstructorCsvText(text: string): InstructorImportRow[] {
   };
 
   const codeIdx = findColIdx("รหัสวิทยากร", "instructor code", "code", "รหัส");
+  const titleIdx = findColIdx("คำนำหน้า", "คำนำหน้านาม", "title", "prefix");
   const firstIdx = findColIdx("ชื่อ", "first name", "firstname", "first_name");
   const lastIdx = findColIdx("นามสกุล", "last name", "lastname", "last_name");
   const phoneIdx = findColIdx("เบอร์โทรศัพท์", "เบอร์โทร", "telephone", "phone", "tel");
@@ -307,6 +312,7 @@ export function parseInstructorCsvText(text: string): InstructorImportRow[] {
     const hasCodeCol = codeIdx >= 0;
 
     const instructorCode = hasCodeCol ? (cols[codeIdx] || "").trim() : "";
+    const title = titleIdx >= 0 ? (cols[titleIdx] || "").trim() || null : null;
     const firstName = firstIdx >= 0
       ? (cols[firstIdx] || "").trim()
       : (hasCodeCol ? cols[1] || "" : cols[0] || "").trim();
@@ -343,6 +349,7 @@ export function parseInstructorCsvText(text: string): InstructorImportRow[] {
     rows.push({
       rowNum: i + 1,
       instructorCode: instructorCode ? instructorCode.toUpperCase() : "",
+      title,
       firstName,
       lastName,
       telephone,

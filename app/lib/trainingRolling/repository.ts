@@ -151,7 +151,7 @@ const mapRollingPlan = (row: RollingPlanWithRelations) => {
   const owner = oap?.company_id ? "FACTORY" : "CENTER";
   const ownerCompany = oap?.company?.company_code ?? "CENTER";
   const instructorName = oap?.instructor
-    ? `${oap.instructor.first_name || ""} ${oap.instructor.last_name || ""}`.trim()
+    ? [oap.instructor.title, oap.instructor.first_name, oap.instructor.last_name].filter(Boolean).join(" ").trim()
     : "";
   const start = splitDateTime(row.start_datetime);
   const end = splitDateTime(row.end_datetime);
@@ -190,6 +190,7 @@ const mapRollingPlan = (row: RollingPlanWithRelations) => {
     oapBudgetMaterial: oap?.budget_material?.toString() || "0",
     oapBudgetFoodBeverage: oap?.budget_food_beverage?.toString() || "0",
     oapTrainer: oap?.instructor_name_text || instructorName,
+    oapInstructorId: oap?.instructor_id?.toString() ?? null,
     oapProvider: oap?.provider_name_text || "",
     owner,
     ownerCompany,

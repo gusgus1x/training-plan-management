@@ -98,6 +98,7 @@ export type ParseInstructorResult = {
   rows: Array<{
     rowNum: number;
     instructorCode: string;
+    title: string | null;
     firstName: string;
     lastName: string;
     telephone: string | null;

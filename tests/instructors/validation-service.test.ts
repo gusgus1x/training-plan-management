@@ -6,6 +6,7 @@ import { parseCreateInstructor } from "../../app/lib/instructors/validation";
 const record = {
   instructorId: "1",
   instructorCode: "INS0001",
+  title: null,
   firstName: "Somchai",
   lastName: "Prasert",
   telephone: "081-234-5678",
@@ -42,6 +43,7 @@ describe("instructor validation and service", () => {
       }),
     ).toEqual({
       instructorCode: "INS0001",
+      title: null,
       firstName: "Somchai",
       lastName: "Prasert",
       telephone: "081-234-5678",
@@ -51,6 +53,23 @@ describe("instructor validation and service", () => {
       organizationName: null,
       status: "ACTIVE",
     });
+  });
+
+  it("normalizes title with whitespace", () => {
+    expect(
+      parseCreateInstructor({
+        instructorCode: "INS0002",
+        title: " ดร. ",
+        firstName: "สมชาย",
+        lastName: "ใจดี",
+      }),
+    ).toEqual(
+      expect.objectContaining({
+        title: "ดร.",
+        firstName: "สมชาย",
+        lastName: "ใจดี",
+      }),
+    );
   });
 
   it("rejects an invalid email address", () => {

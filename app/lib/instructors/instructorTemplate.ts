@@ -1,6 +1,7 @@
 import { escapeXlsxXml, writeXlsxEntries, type XlsxEntry } from "../xlsxTemplate";
 
 export const INSTRUCTOR_TEMPLATE_HEADERS = [
+  "คำนำหน้า (Title)",
   "ชื่อ (First Name) *",
   "นามสกุล (Last Name) *",
   "เบอร์โทรศัพท์ (Telephone)",
@@ -117,13 +118,14 @@ export const buildInstructorXlsxTemplate = (): Buffer => {
   </sheetViews>
   <sheetFormatPr defaultRowHeight="20"/>
   <cols>
-    <col min="1" max="1" width="24" customWidth="1"/>
+    <col min="1" max="1" width="18" customWidth="1"/>
     <col min="2" max="2" width="24" customWidth="1"/>
-    <col min="3" max="3" width="20" customWidth="1"/>
-    <col min="4" max="4" width="28" customWidth="1"/>
-    <col min="5" max="5" width="32" customWidth="1"/>
-    <col min="6" max="6" width="30" customWidth="1"/>
-    <col min="7" max="7" width="35" customWidth="1"/>
+    <col min="3" max="3" width="24" customWidth="1"/>
+    <col min="4" max="4" width="20" customWidth="1"/>
+    <col min="5" max="5" width="28" customWidth="1"/>
+    <col min="6" max="6" width="32" customWidth="1"/>
+    <col min="7" max="7" width="30" customWidth="1"/>
+    <col min="8" max="8" width="35" customWidth="1"/>
   </cols>
   <sheetData>
     ${rowXml}

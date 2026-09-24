@@ -4,6 +4,7 @@ export type InstructorStatus = (typeof INSTRUCTOR_STATUSES)[number];
 export type InstructorRecord = {
   instructorId: string;
   instructorCode: string;
+  title: string | null;
   firstName: string;
   lastName: string;
   telephone: string | null;
@@ -23,6 +24,7 @@ export type InstructorListFilters = {
 
 export type CreateInstructorInput = {
   instructorCode: string;
+  title?: string | null;
   firstName: string;
   lastName: string;
   telephone: string | null;

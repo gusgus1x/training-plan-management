@@ -6,11 +6,11 @@ import { maskNationalId } from "./nationalId";
 import type { EmployeeInput, EmployeeListFilters, EmployeeRecord } from "./types";
 
 const map=(r:any):EmployeeRecord=>({employeeId:String(r.employee_id),userId:r.user_id,companyId:String(r.company_id),companyCode:r.company.company_code,employeeCode:r.employee_code,
-  functionId:r.function_id?String(r.function_id):null,functionCode:r.organization_function?.function_code??null,functionName:r.organization_function?.function_name_en??r.organization_function?.function_name_th??null,
-  divisionId:r.division_id?String(r.division_id):null,divisionCode:r.division?.division_code??null,divisionName:r.division?.division_name_en??r.division?.division_name_th??null,
-  departmentId:r.department_id?String(r.department_id):null,departmentCode:r.department?.department_code??null,departmentName:r.department?.department_name_en??r.department?.department_name_th??null,
-  sectionId:r.section_id?String(r.section_id):null,sectionCode:r.section?.section_code??null,sectionName:r.section?.section_name_en??r.section?.section_name_th??null,
-  positionId:r.position_id?String(r.position_id):null,positionCode:r.position?.position_code??null,positionName:r.position?.position_name_en??r.position?.position_name_th??null,
+  functionId:r.function_id?String(r.function_id):null,functionCode:r.organization_function?.function_code??null,functionName:r.organization_function?.function_name_en??r.organization_function?.function_name_th??null,functionNameTh:r.organization_function?.function_name_th??null,
+  divisionId:r.division_id?String(r.division_id):null,divisionCode:r.division?.division_code??null,divisionName:r.division?.division_name_en??r.division?.division_name_th??null,divisionNameTh:r.division?.division_name_th??null,
+  departmentId:r.department_id?String(r.department_id):null,departmentCode:r.department?.department_code??null,departmentName:r.department?.department_name_en??r.department?.department_name_th??null,departmentNameTh:r.department?.department_name_th??null,
+  sectionId:r.section_id?String(r.section_id):null,sectionCode:r.section?.section_code??null,sectionName:r.section?.section_name_en??r.section?.section_name_th??null,sectionNameTh:r.section?.section_name_th??null,
+  positionId:r.position_id?String(r.position_id):null,positionCode:r.position?.position_code??null,positionName:r.position?.position_name_en??r.position?.position_name_th??null,positionNameTh:r.position?.position_name_th??null,
   levelId:r.level_id?String(r.level_id):null,levelCode:r.employee_level?.level_code??r.employee_level?.level_code_en??r.employee_level?.level_key??null,levelKey:r.employee_level?.level_code??r.employee_level?.level_code_en??r.employee_level?.level_key??null,
   titleTh:r.title_th,titleEn:r.title_en,firstNameTh:r.first_name_th,lastNameTh:r.last_name_th,firstNameEn:r.first_name_en,lastNameEn:r.last_name_en,
   birthDate:r.birth_date?.toISOString().slice(0,10)??null,hireDate:r.hire_date?.toISOString().slice(0,10)??null,telephone:r.telephone,email:r.email,

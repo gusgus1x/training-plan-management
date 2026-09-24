@@ -30,14 +30,14 @@ type LoginPageProps = {
   ) => void;
 };
 
-export type PreviewCompanyCode = "ATA" | "ATFB" | "SATI" | "NIC" | "SNF" | "TEP";
+export type PreviewCompanyCode = "ATA" | "SNF" | "NIC" | "ATFB" | "SATI" | "TEP";
 
 const previewCompanyCodes: readonly PreviewCompanyCode[] = [
   "ATA",
+  "SNF",
+  "NIC",
   "ATFB",
   "SATI",
-  "NIC",
-  "SNF",
   "TEP",
 ];
 
@@ -48,6 +48,20 @@ const affiliatedCompanyLogos = [
     fullName: "Aisin Takaoka Asia Co., Ltd.",
     thaiName: "บริษัท ไอชิน ทากาโอกะ เอเชีย จำกัด",
     src: ataLogo,
+  },
+  {
+    code: "SNF" as const,
+    name: "SNF",
+    fullName: "The Siam Nawaloha Foundry Co., Ltd.",
+    thaiName: "บริษัท สยามนวโลหะฟาวน์ดรี จำกัด",
+    src: snfLogo,
+  },
+  {
+    code: "NIC" as const,
+    name: "NIC",
+    fullName: "The Nawaloha Industry Co., Ltd.",
+    thaiName: "บริษัท นวโลหะอุตสาหกรรม จำกัด",
+    src: nicLogo,
   },
   {
     code: "ATFB" as const,
@@ -64,20 +78,6 @@ const affiliatedCompanyLogos = [
     src: satiLogo,
   },
   {
-    code: "NIC" as const,
-    name: "NIC",
-    fullName: "The Nawaloha Industry Co., Ltd.",
-    thaiName: "บริษัท นวโลหะอุตสาหกรรม จำกัด",
-    src: nicLogo,
-  },
-  {
-    code: "SNF" as const,
-    name: "SNF",
-    fullName: "The Siam Nawaloha Foundry Co., Ltd.",
-    thaiName: "บริษัท สยามนวโลหะฟาวน์ดรี จำกัด",
-    src: snfLogo,
-  },
-  {
     code: "TEP" as const,
     name: "TEP",
     fullName: "Thai Engineering Products Co., Ltd.",
@@ -88,11 +88,11 @@ const affiliatedCompanyLogos = [
 
 export const COMPANY_PREFIX_MAP: Record<PreviewCompanyCode, string> = {
   ATA: "1290",
-  TEP: "0450",
-  ATFB: "1510",
-  NIC: "0420",
-  SATI: "1120",
   SNF: "0430",
+  NIC: "0420",
+  ATFB: "1510",
+  SATI: "1120",
+  TEP: "0450",
 };
 
 const GENERIC_LOGIN_ERROR = "ไม่สามารถเข้าสู่ระบบได้ โปรดตรวจสอบชื่อผู้ใช้และรหัสผ่าน";
@@ -352,7 +352,7 @@ export default function LoginPage({
                   <span className={styles.selectedCompanyDot} aria-hidden="true" />
                   <span className={styles.selectedCompanyText}>
                     {t("พนักงานสังกัด:", "Employee of:")}{" "}
-                    <strong>{selectedCompany}</strong> ({COMPANY_PREFIX_MAP[selectedCompany]}-)
+                    <strong>{selectedCompany}</strong> <span className={styles.companyPrefixTag}>{COMPANY_PREFIX_MAP[selectedCompany]}-</span>
                   </span>
                 </div>
                 <button

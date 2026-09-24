@@ -1,11 +1,11 @@
 export type EmploymentStatus = "ACTIVE" | "INACTIVE";
 export type EmployeeRecord = {
   employeeId: string; companyId: string; companyCode: string; employeeCode: string | null; userId: string;
-  functionId: string | null; functionCode: string | null; functionName: string | null;
-  divisionId: string | null; divisionCode: string | null; divisionName: string | null;
-  departmentId: string | null; departmentCode: string | null; departmentName: string | null;
-  sectionId: string | null; sectionCode: string | null; sectionName: string | null;
-  positionId: string | null; positionCode: string | null; positionName: string | null;
+  functionId: string | null; functionCode: string | null; functionName: string | null; functionNameTh: string | null;
+  divisionId: string | null; divisionCode: string | null; divisionName: string | null; divisionNameTh: string | null;
+  departmentId: string | null; departmentCode: string | null; departmentName: string | null; departmentNameTh: string | null;
+  sectionId: string | null; sectionCode: string | null; sectionName: string | null; sectionNameTh: string | null;
+  positionId: string | null; positionCode: string | null; positionName: string | null; positionNameTh?: string | null;
   levelId: string | null; levelCode: string | null; levelKey: string | null;
   titleTh: string | null; titleEn: string | null; firstNameTh: string; lastNameTh: string;
   firstNameEn: string | null; lastNameEn: string | null; birthDate: string | null;

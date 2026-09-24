@@ -619,6 +619,7 @@ model training_evaluation_reviewer {
 model instructor {
   instructor_id     BigInt              @id(map: "PK_instructor") @default(autoincrement())
   instructor_code   String              @unique(map: "UQ_instructor_instructor_code") @db.NVarChar(30)
+  title             String?             @db.NVarChar(50)
   first_name        String              @db.NVarChar(150)
   last_name         String              @db.NVarChar(150)
   telephone         String?             @db.NVarChar(30)

@@ -13,6 +13,7 @@ type DatabaseClient = Pick<PrismaClient, "instructor" | "training_plan_oap">;
 const select = {
   instructor_id: true,
   instructor_code: true,
+  title: true,
   first_name: true,
   last_name: true,
   telephone: true,
@@ -26,6 +27,7 @@ type Row = Prisma.instructorGetPayload<{ select: typeof select }>;
 const map = (row: Row): InstructorRecord => ({
   instructorId: row.instructor_id.toString(),
   instructorCode: row.instructor_code,
+  title: row.title ?? null,
   firstName: row.first_name,
   lastName: row.last_name,
   telephone: row.telephone,
@@ -47,6 +49,7 @@ export const createInstructorRepository = (client?: DatabaseClient) => {
       if (filters.search) {
         where.OR = [
           { instructor_code: { contains: filters.search } },
+          { title: { contains: filters.search } },
           { first_name: { contains: filters.search } },
           { last_name: { contains: filters.search } },
           { telephone: { contains: filters.search } },
@@ -99,6 +102,7 @@ export const createInstructorRepository = (client?: DatabaseClient) => {
           await database().instructor.create({
             data: {
               instructor_code: input.instructorCode,
+              title: input.title ?? null,
               first_name: input.firstName,
               last_name: input.lastName,
               telephone: input.telephone,
@@ -121,6 +125,9 @@ export const createInstructorRepository = (client?: DatabaseClient) => {
             data: {
               ...(input.instructorCode !== undefined
                 ? { instructor_code: input.instructorCode }
+                : {}),
+              ...(input.title !== undefined
+                ? { title: input.title }
                 : {}),
               ...(input.firstName !== undefined
                 ? { first_name: input.firstName }

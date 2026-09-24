@@ -63,6 +63,7 @@ export const parseCreateInstructor = (
   input: InputObject,
 ): CreateInstructorInput => ({
   instructorCode: code(input),
+  title: readOptionalString(input, "title", { maxLength: 50 }),
   firstName: readRequiredString(input, "firstName", { maxLength: 150 }),
   lastName: readRequiredString(input, "lastName", { maxLength: 150 }),
   telephone: readOptionalString(input, "telephone", { maxLength: 30 }),
@@ -80,6 +81,9 @@ export const parseUpdateInstructor = (
 ): UpdateInstructorInput => {
   const update: UpdateInstructorInput = {};
   if (hasOwn(input, "instructorCode")) update.instructorCode = code(input);
+  if (hasOwn(input, "title")) {
+    update.title = readOptionalString(input, "title", { maxLength: 50 });
+  }
   if (hasOwn(input, "firstName")) {
     update.firstName = readRequiredString(input, "firstName", {
       maxLength: 150,

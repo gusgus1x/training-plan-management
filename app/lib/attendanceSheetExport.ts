@@ -29,6 +29,10 @@ export type AttendanceEmployeeMaster = {
   titleEn: string;
   functionName: string;
   positionName: string;
+  departmentTh?: string;
+  sectionTh?: string;
+  divisionTh?: string;
+  functionNameTh?: string;
 };
 
 export type AttendancePositionMaster = {
@@ -95,11 +99,17 @@ export const localizeAndSortAttendanceParticipants = (
       const lastName = (employee.surnameTh || participant.lastName || "").trim();
       const thaiName = [firstName, lastName].filter(Boolean).join(" ");
 
+      const thaiDepartment =
+        employee.departmentTh ||
+        employee.sectionTh ||
+        employee.divisionTh ||
+        employee.functionNameTh;
+
       return {
         ...participant,
         name: thaiName || participant.name,
         company: employee.company || participant.company,
-        department: employee.functionName || participant.department,
+        department: thaiDepartment || employee.functionName || participant.department,
         position: displayPosition,
         prefix: getThaiTitle(employee.titleEn || participant.prefix || ""),
         firstName: firstName || participant.firstName,

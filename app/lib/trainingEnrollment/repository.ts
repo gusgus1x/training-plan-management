@@ -374,7 +374,12 @@ const mapEnrollment = (row: EnrollmentWithRelations) => {
     company: employee.company.company_code,
     section: employee.section?.section_name_th || employee.section?.section_name_en || "",
     division: employee.division?.division_name_th || employee.division?.division_name_en || "",
-    department: employee.organization_function?.function_name_en || employee.organization_function?.function_name_th || employee.department?.department_name_th || "",
+    department:
+      employee.department?.department_name_th ||
+      employee.organization_function?.function_name_th ||
+      employee.department?.department_name_en ||
+      employee.organization_function?.function_name_en ||
+      "",
     position: employee.position?.position_name_en || employee.position?.position_name_th || "",
     // level_key is a Thai abbreviation (จ/บ/ป + number), not an English code despite the
     // name — level_code ("S1"/"O1"/"M1"..."M4") is the real English code and must come first.

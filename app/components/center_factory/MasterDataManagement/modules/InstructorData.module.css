@@ -456,6 +456,7 @@
   font-weight: 900;
   padding: 12px;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .dataTable td,
@@ -880,6 +881,7 @@
   padding: 8px 12px;
   border-bottom: 1px solid var(--ui-30-border, #f1f5f9);
   vertical-align: middle;
+  white-space: nowrap;
 }
 
 .importPreviewRowError {
@@ -1053,6 +1055,22 @@
 
 .colCode {
   width: 105px;
+  white-space: nowrap;
+}
+
+.colTitle {
+  width: 90px;
+  min-width: 80px;
+  white-space: nowrap;
+}
+
+.colFirstName {
+  min-width: 140px;
+  white-space: nowrap;
+}
+
+.colLastName {
+  min-width: 140px;
   white-space: nowrap;
 }
 

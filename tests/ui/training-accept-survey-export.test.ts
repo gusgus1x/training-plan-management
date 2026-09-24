@@ -326,6 +326,67 @@ describe("Training Accept Survey attendance sheet export", () => {
     ]);
   });
 
+  it("prioritizes Thai department, section, or division for the attendance sheet column I", () => {
+    const participants = [
+      {
+        id: "ATA-101",
+        name: "สมพร รักดี",
+        company: "ATA",
+        department: "Production",
+        position: "Staff",
+      },
+      {
+        id: "ATA-102",
+        name: "สมศักดิ์ ขยัน",
+        company: "ATA",
+        department: "Quality",
+        position: "Staff",
+      },
+    ];
+    const employees = [
+      {
+        empCode: "ATA-101",
+        company: "ATA",
+        nameTh: "สมพร",
+        surnameTh: "รักดี",
+        titleEn: "Mr.",
+        functionName: "Production",
+        positionName: "Staff",
+        departmentTh: "แผนกผลิตชิ้นส่วน",
+        sectionTh: "ส่วนประกอบ",
+        divisionTh: "ฝ่ายผลิต",
+      },
+      {
+        empCode: "ATA-102",
+        company: "ATA",
+        nameTh: "สมศักดิ์",
+        surnameTh: "ขยัน",
+        titleEn: "Mr.",
+        functionName: "Quality",
+        positionName: "Staff",
+        sectionTh: "ส่วนตรวจสอบคุณภาพ",
+      },
+    ];
+
+    const localized = localizeAndSortAttendanceParticipants(
+      participants,
+      employees,
+      [],
+    );
+
+    expect(localized[0].department).toBe("แผนกผลิตชิ้นส่วน");
+    expect(localized[1].department).toBe("ส่วนตรวจสอบคุณภาพ");
+
+    const workbook = buildAttendanceWorkbook(template, course, localized);
+    const worksheetXml = readXlsxEntry(workbook, "xl/worksheets/sheet1.xml").toString("utf8");
+
+    // Row 11 is the first participant row; column I should carry the Thai department
+    expect(worksheetXml).toContain('<c r="I11"');
+    expect(worksheetXml).toContain("แผนกผลิตชิ้นส่วน");
+    expect(worksheetXml).toContain('<c r="I12"');
+    expect(worksheetXml).toContain("ส่วนตรวจสอบคุณภาพ");
+  });
+
   it("creates a filesystem-safe real Excel filename with course code, date, and time", () => {
     expect(
       getAttendanceSheetFileName({

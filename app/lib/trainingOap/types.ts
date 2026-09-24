@@ -17,6 +17,7 @@ export type OapPlanRecord = {
   budgetMaterial: string;
   budgetFoodBeverage: string;
   trainer: string;
+  instructorId: string | null;
   providerId: string | null;
   providerName: string;
   createdBy: string;

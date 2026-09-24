@@ -600,12 +600,18 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
     });
   };
 
+  const formatInstructorFullName = (ins: InstructorRecord | null | undefined): string => {
+    if (!ins) return "";
+    return [ins.title, ins.firstName, ins.lastName].filter(Boolean).join(" ").trim();
+  };
+
   const resolveInstructorId = (trainerName: string) => {
     if (form.instructorId) return form.instructorId;
     const trimmed = trainerName.trim();
     if (!trimmed) return null;
     const matched = instructors.find(
       (instructor) =>
+        formatInstructorFullName(instructor).toLowerCase() === trimmed.toLowerCase() ||
         `${instructor.firstName} ${instructor.lastName}`.trim().toLowerCase() === trimmed.toLowerCase() ||
         instructor.instructorCode.toLowerCase() === trimmed.toLowerCase(),
     );
@@ -622,6 +628,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
     return (
       instructors.find(
         (ins) =>
+          formatInstructorFullName(ins).toLowerCase() === t ||
           `${ins.firstName} ${ins.lastName}`.trim().toLowerCase() === t ||
           ins.instructorCode.toLowerCase() === t,
       ) ?? null
@@ -630,7 +637,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
 
   const instructorOptions = useMemo(() => {
     return instructors.map((ins) => {
-      const fullName = `${ins.firstName} ${ins.lastName}`.trim();
+      const fullName = formatInstructorFullName(ins);
       const details = [ins.university, ins.education, ins.organizationName].filter(Boolean).join(" • ");
       return {
         value: ins.instructorId,
@@ -644,7 +651,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   const handleSelectInstructor = (value: string) => {
     const ins = instructors.find((item) => item.instructorId === value);
     if (ins) {
-      const fullName = `${ins.firstName} ${ins.lastName}`.trim();
+      const fullName = formatInstructorFullName(ins);
       setForm((current) => ({
         ...current,
         instructorId: ins.instructorId,
@@ -752,6 +759,8 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
     setEditingId(plan.id);
     const matched = instructors.find(
       (ins) =>
+        (plan.instructorId && ins.instructorId === plan.instructorId) ||
+        formatInstructorFullName(ins).toLowerCase() === plan.trainer.trim().toLowerCase() ||
         `${ins.firstName} ${ins.lastName}`.trim().toLowerCase() === plan.trainer.trim().toLowerCase() ||
         ins.instructorCode.toLowerCase() === plan.trainer.trim().toLowerCase(),
     );
@@ -1370,7 +1379,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                     <span>{t("ชื่อ - นามสกุล วิทยากร (Trainer Name) *", "Trainer Name *")}</span>
                     <input
                       disabled={!selectedCourse}
-                      placeholder={t("เช่น อ.สมชาย ใจดี", "e.g. Dr. John Doe")}
+                      placeholder={t("เช่น ผศ.ดร. สมชาย ใจดี", "e.g. Dr. John Doe")}
                       value={form.trainer}
                       onChange={(e) => updateForm("trainer", e.target.value)}
                     />
@@ -1588,7 +1597,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                       <span className={styles.previewFieldLabel}>{t("ชื่อวิทยากร", "Instructor Name")}</span>
                       <span className={styles.previewFieldValue}>
                         {selectedInstructor
-                          ? `${selectedInstructor.firstName} ${selectedInstructor.lastName}`
+                          ? formatInstructorFullName(selectedInstructor)
                           : form.trainer.trim() || "-"}
                       </span>
                     </div>
@@ -1750,6 +1759,14 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                       const isOpen = openDetailId === plan.id;
                       const isCenterPlan = isCenterOwnedOap(plan);
                       const isRowReadOnlyForFactory = isFactoryUser && isCenterPlan;
+                      const matchedPlanInstructor = instructors.find(
+                        (ins) =>
+                          (plan.instructorId && ins.instructorId === plan.instructorId) ||
+                          formatInstructorFullName(ins).toLowerCase() === plan.trainer.trim().toLowerCase() ||
+                          `${ins.firstName} ${ins.lastName}`.trim().toLowerCase() === plan.trainer.trim().toLowerCase() ||
+                          ins.instructorCode.toLowerCase() === plan.trainer.trim().toLowerCase(),
+                      );
+                      const displayTrainer = (matchedPlanInstructor ? formatInstructorFullName(matchedPlanInstructor) : plan.trainer) || "-";
                       return (
                         <Fragment key={plan.id}>
                           <tr
@@ -1860,7 +1877,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                             <td>{plan.participants}</td>
                             <td>{plan.hours}</td>
                             <td>{Number(plan.budget).toLocaleString("en-US")}</td>
-                            <td>{plan.trainer}</td>
+                            <td>{displayTrainer}</td>
                             <td>{plan.providerName}</td>
                           </tr>
                           {isOpen ? (
@@ -1949,15 +1966,10 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                                     })()}
 
                                     {(() => {
-                                      const matchedPlanInstructor = instructors.find(
-                                        (ins) =>
-                                          `${ins.firstName} ${ins.lastName}`.trim().toLowerCase() === plan.trainer.trim().toLowerCase() ||
-                                          ins.instructorCode.toLowerCase() === plan.trainer.trim().toLowerCase(),
-                                      );
                                       return (
                                         <div className={styles.previewCard}>
                                           <div className={styles.previewCardHeader}><span><User size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />{t("ข้อมูลวิทยากร & สถาบัน (Instructor & Provider)", "Instructor & Provider Details")}</span></div>
-                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("ชื่อวิทยากร", "Instructor Name")}</span><span className={styles.previewFieldValue}>{plan.trainer || "-"}</span></div>
+                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("ชื่อวิทยากร", "Instructor Name")}</span><span className={styles.previewFieldValue}>{displayTrainer}</span></div>
                                           {matchedPlanInstructor?.instructorCode ? (
                                             <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("รหัสวิทยากร", "Instructor Code")}</span><span className={styles.previewFieldValue}>{matchedPlanInstructor.instructorCode}</span></div>
                                           ) : null}

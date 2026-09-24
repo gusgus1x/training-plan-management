@@ -134,6 +134,7 @@ export type RollingPlan = {
   budgetMaterial: string;
   budgetFoodBeverage: string;
   trainer: string;
+  instructorId?: string | null;
   provider: string;
   ownerName: string;
   owner: WorkflowOwner;
@@ -512,6 +513,7 @@ const mapRecordToRollingPlan = (record: RollingPlanRecord): RollingPlan => {
     budgetMaterial: record.oapBudgetMaterial,
     budgetFoodBeverage: record.oapBudgetFoodBeverage,
     trainer: record.oapTrainer,
+    instructorId: record.oapInstructorId ?? null,
     provider: record.oapProvider,
     ownerName: record.createdBy,
     owner: record.owner,
@@ -943,12 +945,22 @@ export default function TrainingRolling() {
   );
   const selectedOap = oapSources.find((source) => source.id === form.oapId) ?? null;
 
+  const formatInstructorFullName = (ins: InstructorRecord | null | undefined): string => {
+    if (!ins) return "";
+    return [ins.title, ins.firstName, ins.lastName].filter(Boolean).join(" ").trim();
+  };
+
   const selectedOapInstructor = useMemo(() => {
+    if (selectedOap?.instructorId) {
+      const byId = instructors.find((ins) => ins.instructorId === selectedOap.instructorId);
+      if (byId) return byId;
+    }
     if (!selectedOap?.trainer?.trim()) return null;
     const t = selectedOap.trainer.trim().toLowerCase();
     return (
       instructors.find(
         (ins) =>
+          formatInstructorFullName(ins).toLowerCase() === t ||
           `${ins.firstName} ${ins.lastName}`.trim().toLowerCase() === t ||
           ins.instructorCode.toLowerCase() === t,
       ) ?? null
@@ -2115,7 +2127,9 @@ export default function TrainingRolling() {
                     </div>
                     <div className={styles.previewFieldRow}>
                       <span className={styles.previewFieldLabel}>{t("ชื่อวิทยากร", "Instructor Name")}</span>
-                      <span className={styles.previewFieldValue}>{selectedOap.trainer || "-"}</span>
+                      <span className={styles.previewFieldValue}>
+                        {(selectedOapInstructor ? formatInstructorFullName(selectedOapInstructor) : selectedOap.trainer) || "-"}
+                      </span>
                     </div>
                     {selectedOapInstructor?.instructorCode ? (
                       <div className={styles.previewFieldRow}>
@@ -2574,6 +2588,8 @@ export default function TrainingRolling() {
                                     {(() => {
                                       const matchedRollingInstructor = instructors.find(
                                         (ins) =>
+                                          (plan.instructorId && ins.instructorId === plan.instructorId) ||
+                                          formatInstructorFullName(ins).toLowerCase() === plan.trainer?.trim().toLowerCase() ||
                                           `${ins.firstName} ${ins.lastName}`.trim().toLowerCase() === plan.trainer?.trim().toLowerCase() ||
                                           ins.instructorCode.toLowerCase() === plan.trainer?.trim().toLowerCase(),
                                       );
@@ -2585,7 +2601,7 @@ export default function TrainingRolling() {
                                               {t("ข้อมูลวิทยากร & สถาบัน (Instructor & Provider)", "Instructor & Provider Details")}
                                             </span>
                                           </div>
-                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("วิทยากร", "Instructor Name")}</span><span className={styles.previewFieldValue}>{plan.trainer || "-"}</span></div>
+                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("วิทยากร", "Instructor Name")}</span><span className={styles.previewFieldValue}>{(matchedRollingInstructor ? formatInstructorFullName(matchedRollingInstructor) : plan.trainer) || "-"}</span></div>
                                           {matchedRollingInstructor?.instructorCode ? (
                                             <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("รหัสวิทยากร", "Instructor Code")}</span><span className={styles.previewFieldValue}>{matchedRollingInstructor.instructorCode}</span></div>
                                           ) : null}

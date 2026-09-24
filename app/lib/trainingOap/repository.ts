@@ -101,7 +101,9 @@ const UI_STATUS_TO_DB: Record<OapPlanStatus, string> = {
 const mapOapPlan = (row: OapPlanWithRelations, sequence: number) => {
   const owner = row.company_id ? "FACTORY" : "CENTER";
   const ownerCompany = row.company?.company_code ?? "CENTER";
-  const instructorName = row.instructor ? `${row.instructor.first_name} ${row.instructor.last_name}`.trim() : "";
+  const instructorName = row.instructor
+    ? [row.instructor.title, row.instructor.first_name, row.instructor.last_name].filter(Boolean).join(" ").trim()
+    : "";
   return {
     id: row.oap_plan_id.toString(),
     sequence,
@@ -117,6 +119,7 @@ const mapOapPlan = (row: OapPlanWithRelations, sequence: number) => {
     budgetMaterial: row.budget_material?.toString() ?? "",
     budgetFoodBeverage: row.budget_food_beverage?.toString() ?? "",
     trainer: row.instructor_name_text || instructorName,
+    instructorId: row.instructor_id?.toString() ?? null,
     providerId: row.provider_id?.toString() ?? null,
     providerName: row.provider_name_text || row.institute_provider?.institute_provider_name || "",
     createdBy: row.created_by.toString(),

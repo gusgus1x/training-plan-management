@@ -285,6 +285,7 @@ export const POST = createProtectedRoute(
               where: { instructor_id: existingId },
               data: {
                 ...(targetCode ? { instructor_code: targetCode } : {}),
+                title: row.title ? row.title.trim() : null,
                 first_name: row.firstName.trim(),
                 last_name: row.lastName.trim(),
                 telephone: row.telephone ? row.telephone.trim() : null,
@@ -311,6 +312,7 @@ export const POST = createProtectedRoute(
           const created = await prisma.instructor.create({
             data: {
               instructor_code: targetCode,
+              title: row.title ? row.title.trim() : null,
               first_name: row.firstName.trim(),
               last_name: row.lastName.trim(),
               telephone: row.telephone ? row.telephone.trim() : null,

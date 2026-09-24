@@ -852,13 +852,13 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 10px;
+  gap: 10px;
+  margin-bottom: 12px;
   padding: 8px 12px;
   border-radius: 10px;
-  background: rgba(0, 122, 61, 0.09);
-  border: 1px solid rgba(0, 122, 61, 0.28);
-  font-size: 0.78rem;
+  background: rgba(0, 122, 61, 0.08);
+  border: 1px solid rgba(0, 122, 61, 0.22);
+  font-size: 0.8rem;
   color: var(--ui-30-ink);
   animation: fadeIn 0.2s ease-out;
 }
@@ -867,39 +867,79 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
 }
 
 .selectedCompanyDot {
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: var(--ui-30-primary, #007a3d);
-  box-shadow: 0 0 6px var(--ui-30-primary, #007a3d);
+  box-shadow: 0 0 0 3px rgba(0, 122, 61, 0.15), 0 0 8px var(--ui-30-primary, #007a3d);
   flex-shrink: 0;
+}
+
+.selectedCompanyText {
+  font-size: 0.8rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
 }
 
 .selectedCompanyText strong {
   color: var(--ui-30-primary, #007a3d);
+  font-weight: 800;
+}
+
+.companyPrefixTag {
+  display: inline-block;
+  font-family: var(--font-geist-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--ui-30-primary, #007a3d);
+  background: rgba(0, 122, 61, 0.12);
+  padding: 1px 6px;
+  border-radius: 4px;
 }
 
 .clearSelectedCompanyBtn {
   appearance: none;
-  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.7);
   border: 1px solid rgba(0, 0, 0, 0.12);
   color: var(--ui-30-muted, #64748b);
-  font-size: 0.7rem;
-  font-weight: 700;
+  font-size: 0.72rem;
+  font-weight: 600;
   cursor: pointer;
-  padding: 3px 8px;
+  padding: 4px 9px;
   border-radius: 6px;
-  transition: all 0.15s ease;
+  transition: all 0.18s ease;
   white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.clearSelectedCompanyBtn svg {
+  display: inline-block;
+  flex-shrink: 0;
+  opacity: 0.75;
+  transition: transform 0.18s ease, opacity 0.18s ease;
 }
 
 .clearSelectedCompanyBtn:hover {
   background: rgba(239, 68, 68, 0.1);
   color: #ef4444;
-  border-color: rgba(239, 68, 68, 0.3);
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.clearSelectedCompanyBtn:hover svg {
+  opacity: 1;
+  transform: rotate(90deg);
 }
 
 .inputPrefixBadge {
@@ -977,8 +1017,14 @@
 
 :global([data-theme="dark"]) .selectedCompanyBanner,
 :global(.dark) .selectedCompanyBanner {
-  background: rgba(16, 185, 129, 0.12);
-  border-color: rgba(16, 185, 129, 0.3);
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.28);
+}
+
+:global([data-theme="dark"]) .selectedCompanyDot,
+:global(.dark) .selectedCompanyDot {
+  background: #34d399;
+  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.2), 0 0 8px #34d399;
 }
 
 :global([data-theme="dark"]) .inputPrefixBadge,
@@ -991,17 +1037,24 @@
   color: #34d399;
 }
 
+:global([data-theme="dark"]) .companyPrefixTag,
+:global(.dark) .companyPrefixTag {
+  color: #34d399;
+  background: rgba(52, 211, 153, 0.16);
+}
+
 :global([data-theme="dark"]) .clearSelectedCompanyBtn,
 :global(.dark) .clearSelectedCompanyBtn {
+  background: rgba(255, 255, 255, 0.06);
   border-color: rgba(255, 255, 255, 0.15);
-  color: #94a3b8;
+  color: #cbd5e1;
 }
 
 :global([data-theme="dark"]) .clearSelectedCompanyBtn:hover,
 :global(.dark) .clearSelectedCompanyBtn:hover {
   background: rgba(239, 68, 68, 0.2);
   color: #fca5a5;
-  border-color: rgba(239, 68, 68, 0.4);
+  border-color: rgba(239, 68, 68, 0.45);
 }
 
 :global([data-theme="dark"]) .affiliateLogoCardActive .affiliateLogoWrapper,

@@ -113,9 +113,13 @@ type SurveyEmployee = {
   company: string;
   departmentCode: string | null;
   functionName?: string;
+  functionNameTh?: string;
   division?: string;
+  divisionTh?: string;
   department: string;
+  departmentTh?: string;
   section?: string;
+  sectionTh?: string;
   position: string;
   level: string;
   prefix: string;
@@ -161,9 +165,9 @@ const toSurveyEmployee = (employee: EmployeeRecord): SurveyEmployee => {
   const rawPrefix = employee.titleTh || (employee.titleEn === "Ms." ? "นางสาว" : employee.titleEn === "Mrs." ? "นาง" : employee.titleEn || "");
   const prefix = (!rawPrefix || rawPrefix === "-") ? "นาย" : rawPrefix;
 
-  const section = employee.sectionName || employee.sectionCode || "-";
-  const division = employee.divisionName || employee.divisionCode || employee.functionName || "-";
-  const department = employee.departmentName || employee.departmentCode || "-";
+  const section = employee.sectionNameTh || employee.sectionName || employee.sectionCode || "-";
+  const division = employee.divisionNameTh || employee.divisionName || employee.divisionCode || employee.functionNameTh || employee.functionName || "-";
+  const department = employee.departmentNameTh || employee.departmentName || employee.departmentCode || "-";
 
   return {
     id: employee.employeeId,
@@ -174,10 +178,14 @@ const toSurveyEmployee = (employee: EmployeeRecord): SurveyEmployee => {
     company: employee.companyCode,
     departmentCode: employee.functionCode,
     functionName: employee.functionName || "-",
+    functionNameTh: employee.functionNameTh || undefined,
     section,
+    sectionTh: employee.sectionNameTh || undefined,
     division,
+    divisionTh: employee.divisionNameTh || undefined,
     department,
-    position: employee.positionName || "-",
+    departmentTh: employee.departmentNameTh || undefined,
+    position: employee.positionNameTh || employee.positionName || "-",
     level: normalizeEmployeeLevel(employee.levelKey || employee.levelCode || "-") || employee.levelKey || employee.levelCode || "-",
     prefix,
     firstName: employee.firstNameTh || employee.firstNameEn || "-",
@@ -1761,6 +1769,10 @@ export default function TrainingAcceptSurvey({
         titleEn: emp.titleTh || (emp.prefix && emp.prefix !== "-" ? emp.prefix : "") || emp.titleEn || "นาย",
         functionName: emp.functionName || emp.department,
         positionName: emp.position,
+        departmentTh: emp.departmentTh,
+        sectionTh: emp.sectionTh,
+        divisionTh: emp.divisionTh,
+        functionNameTh: emp.functionNameTh,
       }));
       const response = await fetch(
         "/api/training-accept-survey/attendance-sheet",
@@ -1770,13 +1782,25 @@ export default function TrainingAcceptSurvey({
           body: JSON.stringify({
             course: selectedCourse,
             participants: localizeAndSortAttendanceParticipants(
-              acceptedParticipants.map((candidate) => ({
-                id: candidate.employeeCode,
-                name: candidate.employeeName,
-                company: candidate.company,
-                department: candidate.department,
-                position: candidate.position,
-              })),
+              acceptedParticipants.map((candidate) => {
+                const masterEmp = masterEmployees.find(
+                  (e) =>
+                    (candidate.employeeCode && e.employeeCode === candidate.employeeCode) ||
+                    (candidate.employeeId && e.id === candidate.employeeId),
+                );
+                const thaiDept =
+                  masterEmp?.departmentTh ||
+                  masterEmp?.sectionTh ||
+                  masterEmp?.divisionTh ||
+                  masterEmp?.functionNameTh;
+                return {
+                  id: candidate.employeeCode,
+                  name: candidate.employeeName,
+                  company: candidate.company,
+                  department: thaiDept || candidate.department,
+                  position: candidate.position,
+                };
+              }),
               // Lookup table for resolving Thai names and positions by employee code. Falling back
               // to the demo master meant a printed attendance sheet could take a name from a
               // fabricated record whose code happened to collide with a real one.
