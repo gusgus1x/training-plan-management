@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import EmployeePhoto from "../EmployeePhoto";
 import DashboardLayout from "../DashboardLayout";
 import {
   buildProfileItems,
@@ -557,12 +558,15 @@ export default function Dashboard({
       <section className={styles.employeePanel} aria-label="Employee profile">
         <div className={styles.profileHeaderBanner}>
           <div className={styles.profileUserGroup}>
-            <div className={styles.photoBox} aria-hidden="true">
-              {getAvatarInitials(
-                authenticatedUser?.displayNameEn,
-                displayFullName,
-                isCenter ? "HRD_CENTER" : "HRD_FACTORY"
-              )}
+            <div className={styles.photoBox} style={{ overflow: "hidden" }} aria-hidden="true">
+              <EmployeePhoto
+                employeeCode={authenticatedUser?.employeeCode}
+                fallback={getAvatarInitials(
+                  authenticatedUser?.displayNameEn,
+                  displayFullName,
+                  isCenter ? "HRD_CENTER" : "HRD_FACTORY"
+                )}
+              />
             </div>
             <div className={styles.profileMetaBox}>
               <div className={styles.profileTagRow}>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import EmployeePhoto from "../EmployeePhoto";
 import { useRealtime } from "../useRealtime";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useUiLanguage, type UiLanguage } from "../ThaiUiLocalization";
@@ -886,10 +887,14 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
 
           {/* 1. Profile - Full-width Row */}
           <section className={styles.employeePanel} aria-label="My employee information">
-            <div className={styles.profileHeaderBanner}>
-              <div className={styles.profileUserGroup}>
-                <div className={styles.photoBox} aria-hidden="true">
-                  {initialsOf(authenticatedUser?.displayNameEn || displayFullName)}
+            {/* Photo, name and position on the left; the numbers and details on the right. */}
+            <div className={styles.profileLayout}>
+              <aside className={styles.profileCard}>
+                <div className={styles.photoBox} style={{ overflow: "hidden" }} aria-hidden="true">
+                  <EmployeePhoto
+                    employeeCode={authenticatedUser?.employeeCode}
+                    fallback={initialsOf(authenticatedUser?.displayNameEn || displayFullName)}
+                  />
                 </div>
                 <div className={styles.profileMetaBox}>
                   <div className={styles.profileTagRow}>
@@ -904,75 +909,75 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                     {profileValue(displayPosition)} / {profileValue(displayDepartment)}
                   </p>
                 </div>
-              </div>
+              </aside>
+              <div className={styles.profileMain}>
+                <div className={styles.kpiSummaryBar} aria-label="Training summary">
+                  <button
+                    type="button"
+                    className={styles.kpiColBtn}
+                    onClick={() => setActiveModule("record")}
+                    title={t("ดูประวัติการอบรม", "View training records")}
+                  >
+                    <span className={styles.kpiLabel}>{t("ลงทะเบียน", "Registered")}</span>
+                    <div className={styles.kpiValueRow}>
+                      <strong className={styles.kpiValue}>{enrolledPlanIds.size}</strong>
+                      <small className={styles.kpiHelper}>{t("หลักสูตร", "courses")}</small>
+                    </div>
+                  </button>
 
-              <div className={styles.kpiSummaryBar} aria-label="Training summary">
-                <button
-                  type="button"
-                  className={styles.kpiColBtn}
-                  onClick={() => setActiveModule("record")}
-                  title={t("ดูประวัติการอบรม", "View training records")}
-                >
-                  <span className={styles.kpiLabel}>{t("ลงทะเบียน", "Registered")}</span>
-                  <div className={styles.kpiValueRow}>
-                    <strong className={styles.kpiValue}>{enrolledPlanIds.size}</strong>
-                    <small className={styles.kpiHelper}>{t("หลักสูตร", "courses")}</small>
-                  </div>
-                </button>
+                  <button
+                    type="button"
+                    className={styles.kpiColBtn}
+                    onClick={() => setActiveModule("record")}
+                    title={t("ดูประวัติการอบรมที่สำเร็จแล้ว", "View completed records")}
+                  >
+                    <span className={styles.kpiLabel}>{t("สำเร็จแล้ว", "Completed")}</span>
+                    <div className={styles.kpiValueRow}>
+                      <strong className={`${styles.kpiValue} ${styles.kpiCompletedVal}`}>{completedHours}</strong>
+                      <small className={styles.kpiHelper}>{t("ชั่วโมง", "hours")}</small>
+                    </div>
+                  </button>
 
-                <button
-                  type="button"
-                  className={styles.kpiColBtn}
-                  onClick={() => setActiveModule("record")}
-                  title={t("ดูประวัติการอบรมที่สำเร็จแล้ว", "View completed records")}
-                >
-                  <span className={styles.kpiLabel}>{t("สำเร็จแล้ว", "Completed")}</span>
-                  <div className={styles.kpiValueRow}>
-                    <strong className={`${styles.kpiValue} ${styles.kpiCompletedVal}`}>{completedHours}</strong>
-                    <small className={styles.kpiHelper}>{t("ชั่วโมง", "hours")}</small>
-                  </div>
-                </button>
+                  <button
+                    type="button"
+                    className={styles.kpiColBtn}
+                    onClick={() => setActiveModule("register")}
+                    title={t("ดูหลักสูตรที่เปิดรับสมัคร", "View open courses")}
+                  >
+                    <span className={styles.kpiLabel}>{t("เปิดรับสมัคร", "Open")}</span>
+                    <div className={styles.kpiValueRow}>
+                      <strong className={`${styles.kpiValue} ${styles.kpiOpenVal}`}>{openToRegister.length}</strong>
+                      <small className={styles.kpiHelper}>{t("หลักสูตร", "courses")}</small>
+                    </div>
+                  </button>
 
-                <button
-                  type="button"
-                  className={styles.kpiColBtn}
-                  onClick={() => setActiveModule("register")}
-                  title={t("ดูหลักสูตรที่เปิดรับสมัคร", "View open courses")}
-                >
-                  <span className={styles.kpiLabel}>{t("เปิดรับสมัคร", "Open")}</span>
-                  <div className={styles.kpiValueRow}>
-                    <strong className={`${styles.kpiValue} ${styles.kpiOpenVal}`}>{openToRegister.length}</strong>
-                    <small className={styles.kpiHelper}>{t("หลักสูตร", "courses")}</small>
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  className={styles.kpiColBtn}
-                  onClick={() => setActiveModule("register")}
-                  title={t("ดูรายการรออนุมัติ", "View awaiting approval")}
-                >
-                  <span className={styles.kpiLabel}>{t("รออนุมัติ", "Pending")}</span>
-                  <div className={styles.kpiValueRow}>
-                    <strong className={`${styles.kpiValue} ${styles.kpiPendingVal}`}>{awaitingApproval.length}</strong>
-                    <small className={styles.kpiHelper}>{t("รายการ", "items")}</small>
-                  </div>
-                </button>
-              </div>
-            </div>
-
-            <div className={styles.employeeDetailsGrid}>
-              {fullEmployeeProfileItems.map((item) => (
-                <div
-                  className={`${styles.detailCard} ${item.fullWidth ? styles.detailCardFull : ""}`}
-                  key={item.label}
-                >
-                  <span className={styles.detailLabel}>{item.label}</span>
-                  <strong className={styles.detailValue} title={item.value}>
-                    {item.value}
-                  </strong>
+                  <button
+                    type="button"
+                    className={styles.kpiColBtn}
+                    onClick={() => setActiveModule("register")}
+                    title={t("ดูรายการรออนุมัติ", "View awaiting approval")}
+                  >
+                    <span className={styles.kpiLabel}>{t("รออนุมัติ", "Pending")}</span>
+                    <div className={styles.kpiValueRow}>
+                      <strong className={`${styles.kpiValue} ${styles.kpiPendingVal}`}>{awaitingApproval.length}</strong>
+                      <small className={styles.kpiHelper}>{t("รายการ", "items")}</small>
+                    </div>
+                  </button>
                 </div>
-              ))}
+                <div className={styles.employeeDetailsGrid}>
+                  {fullEmployeeProfileItems.slice(1).map((item) => (
+                    <div
+                      className={`${styles.detailCard} ${item.fullWidth ? styles.detailCardFull : ""}`}
+                      key={item.label}
+                    >
+                      <span className={styles.detailLabel}>{item.label}</span>
+                      <strong className={styles.detailValue} title={item.value}>
+                        {item.value}
+                      </strong>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </section>
 

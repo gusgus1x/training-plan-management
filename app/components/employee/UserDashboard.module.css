@@ -584,12 +584,75 @@
   border-bottom: 1px solid var(--ui-30-border);
 }
 
+/* Profile: a card with the photo, tags, name and position on the left; the numbers and the
+   details on the right. Stacks on narrow screens (see the end of this file). */
+.profileLayout {
+  display: grid;
+  grid-template-columns: 232px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.profileCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 16px;
+  text-align: center;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: var(--ui-radius-xl, 16px);
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.08) 0%, var(--ui-60-surface-soft, #f8fafc) 70%);
+}
+
+.profileCard .photoBox {
+  width: 168px;
+  height: 210px;
+  border-radius: 16px;
+  font-size: 2.6rem;
+}
+
+.profileCard .profileMetaBox {
+  align-items: center;
+  width: 100%;
+}
+
+.profileCard .profileTagRow {
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* Under the photo there is room to wrap, so long Thai names and titles are shown whole. */
+.profileCard .profileName,
+.profileCard .profileSubText {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.profileMain {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.profileMain .kpiSummaryBar {
+  margin-left: 0;
+  justify-content: space-around;
+}
+
+.profileMain .kpiColBtn {
+  flex: 1 1 0;
+}
+
+/* A portrait frame, like an ID card, since SmartHR photos are upright portraits. The initials
+   fallback sits in the same frame. */
 .photoBox {
   display: grid;
-  width: 52px;
-  height: 52px;
+  width: 64px;
+  height: 80px;
   place-items: center;
-  border-radius: 50%;
+  border-radius: 12px;
   background: linear-gradient(135deg, #059669 0%, #10b981 100%);
   border: 2px solid #ffffff;
   color: #ffffff;
@@ -714,11 +777,6 @@
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.detailCard:first-child {
-  grid-column: span 2;
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.06) 0%, var(--ui-60-surface-soft) 100%);
-  border-color: rgba(16, 185, 129, 0.25);
-}
 
 .detailCardFull {
   grid-column: span 2;
@@ -1523,7 +1581,7 @@
     grid-template-columns: 1fr;
   }
 
-  .detailCard:first-child {
+  .detailCardFull {
     grid-column: 1;
   }
 
@@ -2629,4 +2687,48 @@
 :global([data-theme="dark"]) .detailValue,
 :global(.dark) .detailValue {
   color: #f8fafc;
+}
+
+/* Profile, narrow screens: photo beside the name on tablets, stacked on phones. Last in the file
+   so it wins over the rules above. */
+@media (max-width: 900px) {
+  .profileLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .profileCard {
+    flex-direction: row;
+    align-items: center;
+    text-align: left;
+  }
+
+  .profileCard .photoBox {
+    width: 104px;
+    height: 130px;
+    font-size: 1.8rem;
+    flex-shrink: 0;
+  }
+
+  .profileCard .profileMetaBox {
+    align-items: flex-start;
+  }
+
+  .profileCard .profileTagRow {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .profileCard {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .profileCard .profileMetaBox {
+    align-items: center;
+  }
+
+  .profileCard .profileTagRow {
+    justify-content: center;
+  }
 }

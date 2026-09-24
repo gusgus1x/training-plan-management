@@ -443,12 +443,14 @@
   width: 100%;
 }
 
+/* A portrait frame, like an ID card, since SmartHR photos are upright portraits. The initials
+   fallback sits in the same frame. */
 .photoBox {
   display: grid;
-  width: 52px;
-  height: 52px;
+  width: 64px;
+  height: 80px;
   place-items: center;
-  border-radius: 50%;
+  border-radius: 12px;
   background: linear-gradient(135deg, #059669 0%, #10b981 100%);
   border: 2px solid #ffffff;
   color: #ffffff;

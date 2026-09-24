@@ -1,6 +1,7 @@
  "use client";
 
 import { useEffect, useRef, useState } from "react";
+import EmployeePhoto from "./EmployeePhoto";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import logoImage from "../photo/logo.png";
@@ -293,8 +294,8 @@ export default function Navbar({
               <div className={styles.userArea}>
                 <div className={styles.userInfo}>
                   <div className={styles.avatarWrapper}>
-                    <div className={`${styles.avatar} ${avatarClass}`} aria-hidden="true">
-                      {avatar}
+                    <div className={`${styles.avatar} ${avatarClass}`} style={{ overflow: "hidden" }} aria-hidden="true">
+                      <EmployeePhoto employeeCode={user?.employeeCode} fallback={avatar} />
                     </div>
                     <span className={styles.onlineBadge} title="Active Session" />
                   </div>
