@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useRealtime } from "../../../useRealtime";
 import {
   formatRollingPlanCompanies,
   getRollingPlanCompanies,
@@ -437,6 +438,24 @@ export default function ScheduleCalendar({
   useEffect(() => {
     void loadWorkspace();
   }, []);
+
+  // A batch added, moved or cancelled, or seats taken, anywhere: refetch without the page loader so
+  // the calendar does not flash, and once for a burst.
+  useRealtime(
+    ["plan.changed", "enrollment.changed"],
+    () => {
+      void Promise.all([
+        loadWorkflowRollingPlans(),
+        listEnrollments({ planId: null, employeeId: null, employeeUserId: null }).catch(() => ({ enrollments: [] })),
+      ])
+        .then(([plans, enrRes]) => {
+          setRollingPlans(plans);
+          setEnrollments(enrRes.enrollments || []);
+        })
+        .catch(() => {});
+    },
+    { debounceMs: 1500 },
+  );
 
   const schedulePlans = useMemo(
     () =>

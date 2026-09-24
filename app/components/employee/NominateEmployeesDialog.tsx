@@ -8,6 +8,7 @@ import { useToast } from "../ToastHost";
 import { useUiLanguage } from "../ThaiUiLocalization";
 import { XCircle } from "../icons/LucideIcons";
 import FilterSelect, { matchesFilter, type FilterOption } from "../FilterSelect";
+import { useRealtime } from "../useRealtime";
 import registerStyles from "./RegisterTrainingModule.module.css";
 import styles from "./NominateEmployeesDialog.module.css";
 
@@ -56,6 +57,9 @@ export default function NominateEmployeesDialog({ course, onClose }: Props) {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [course.rollingId]);
+
+  // Someone else sending the same person marks them "registered" here too.
+  useRealtime(["enrollment.changed"], () => void load(), { planId: course.rollingId, debounceMs: 800 });
 
   const labelOf: Label = (field) => (language === "th" ? field.label : field.labelEn);
 

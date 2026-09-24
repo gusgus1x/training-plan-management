@@ -14,6 +14,7 @@ import {
 
 import type { TrainingRecordRequestRecord } from "../../lib/trainingRecordRequests/types";
 import { listRecordRequests } from "../../lib/trainingRecordRequests/client";
+import { useRealtime } from "../useRealtime";
 
 export type RecordRequestsState = {
   myRequests: TrainingRecordRequestRecord[];
@@ -32,6 +33,8 @@ export function useEmployeeNotices(
     initialRecordRequests ?? { myRequests: [], pendingApprovals: [] },
   );
   const [pendingApproverEnrollments, setPendingApproverEnrollments] = useState<EnrollmentRecord[]>([]);
+  const [version, setVersion] = useState(0);
+  useRealtime(["recordRequest.changed", "enrollment.changed"], () => setVersion((current) => current + 1), { debounceMs: 1000 });
 
   useEffect(() => {
     if (!userKey) return;
@@ -65,7 +68,7 @@ export function useEmployeeNotices(
     return () => {
       isMounted = false;
     };
-  }, [userKey]);
+  }, [userKey, version]);
 
   const notices = useMemo(
     () => buildEmployeeNotices(enrollments, recordRequests, pendingApproverEnrollments),

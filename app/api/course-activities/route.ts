@@ -3,6 +3,7 @@ import fs from "fs/promises";
 import path from "path";
 import { getPrismaClient } from "../../lib/database/prisma";
 import { getServerSession } from "../../lib/auth/server-session";
+import { publish } from "../../lib/realtime/bus";
 
 async function deleteImageFileIfPresent(imageUrl: string | undefined | null) {
   if (!imageUrl || typeof imageUrl !== "string") return;
@@ -402,7 +403,7 @@ export async function GET() {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function createActivity(request: NextRequest) {
   try {
     const body = await request.json();
     const {
@@ -532,7 +533,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function PUT(request: NextRequest) {
+async function updateActivity(request: NextRequest) {
   try {
     const body = await request.json();
     const {
@@ -750,7 +751,7 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-export async function DELETE(request: NextRequest) {
+async function deleteActivity(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
@@ -818,7 +819,7 @@ export async function DELETE(request: NextRequest) {
 }
 
 // PATCH endpoint: Quick toggle pin status or batch update reorder sequence
-export async function PATCH(request: NextRequest) {
+async function reorderActivity(request: NextRequest) {
   try {
     const session = await getServerSession().catch(() => null);
     const isFactory = session?.role === "HRD_FACTORY";
@@ -1021,3 +1022,15 @@ export async function PATCH(request: NextRequest) {
   }
 }
 
+
+/** Activities show on every dashboard and the login page, so a successful write tells everyone. */
+const announcing = (handler: (request: NextRequest) => Promise<Response>) => async (request: NextRequest) => {
+  const response = await handler(request);
+  if (response.ok) publish({ type: "activity.changed" }, { all: true });
+  return response;
+};
+
+export const POST = announcing(createActivity);
+export const PUT = announcing(updateActivity);
+export const DELETE = announcing(deleteActivity);
+export const PATCH = announcing(reorderActivity);

@@ -15,6 +15,7 @@ import LoginPage, { type PreviewCompanyCode } from "./LoginPage";
 import VerifyEmailPage from "./VerifyEmailPage";
 import { AuthenticatedUserProvider } from "./AuthenticatedUserContext";
 import { AuthActionsProvider } from "./AuthActionsContext";
+import RealtimeConnection from "./RealtimeConnection";
 import { useToast } from "./ToastHost";
 import styles from "./AuthGate.module.css";
 
@@ -284,6 +285,8 @@ export default function AuthGate({
           </p>
         ) : null}
         {children}
+        {/* Live updates need a real server session, so the mock preview goes without. */}
+        {isDevelopmentPreview ? null : <RealtimeConnection onRevoked={() => void handleLogout()} />}
         {isDevelopmentPreview ? (
           <div className={styles.previewBadge}>
             {`MOCK UI PREVIEW · ${effectiveUser.roleCode} · No server session`}

@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { useRealtime } from "../useRealtime";
 import { useRouter, useSearchParams } from "next/navigation";
 import { certificateFileUrl } from "../../lib/certificates/client";
 import { listEnrollments } from "../../lib/trainingEnrollment/client";
@@ -727,6 +728,29 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
         setIsRequestsLoading(false);
       });
   };
+
+  // Quiet refetches: a request decided or a seat changed elsewhere shows up without a spinner.
+  useRealtime(
+    ["recordRequest.changed"],
+    () => {
+      listRecordRequests()
+        .then((data) => {
+          setMyRecordRequests(data.myRequests || []);
+          setPendingApprovals(data.pendingApprovals || []);
+        })
+        .catch(() => {});
+    },
+    { debounceMs: 800 },
+  );
+  useRealtime(
+    ["enrollment.changed", "attendance.changed", "plan.changed"],
+    () => {
+      listEnrollments({ planId: null, employeeId: null, employeeUserId: null })
+        .then((result) => setEnrollments(result.enrollments || []))
+        .catch(() => {});
+    },
+    { debounceMs: 1000 },
+  );
 
   const reloadApprovers = () => {
     searchRecordRequestApprovers()

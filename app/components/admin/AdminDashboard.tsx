@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRealtime } from "../useRealtime";
 import Image from "next/image";
 import Link from "next/link";
 import logoImage from "../../photo/logo.png";
@@ -398,12 +399,20 @@ export default function AdminDashboard({
     }
   }, [activeTab, auditPage, auditCategory, auditRole]);
 
-  // Periodic poll for active users every 10 seconds when on audit tab
+  // Someone signing in, out or changing page arrives live. The slow poll is only for "idle" and
+  // "offline", which come from time passing rather than from anything happening.
+  useRealtime(
+    ["session.changed"],
+    () => {
+      if (activeTab === "audit") void loadActiveUsers();
+    },
+    { debounceMs: 1500 },
+  );
   useEffect(() => {
     if (activeTab !== "audit") return;
     const interval = setInterval(() => {
       void loadActiveUsers();
-    }, 10000);
+    }, 60000);
     return () => clearInterval(interval);
   }, [activeTab]);
 

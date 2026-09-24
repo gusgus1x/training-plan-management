@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRealtime } from "../../../useRealtime";
 import { useRouter } from "next/navigation";
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
@@ -121,6 +122,17 @@ export default function RequestTrainingNeed() {
   const [rejectionNote, setRejectionNote] = useState("");
   // The requests the open rejection dialog will reject: the one in the detail pane, or a course's.
   const [rejectTargetIds, setRejectTargetIds] = useState<string[]>([]);
+
+  // New or decided requests arrive without the page's loading state; companies and courses stay.
+  useRealtime(
+    ["needRequest.changed"],
+    () => {
+      listNeedRequests()
+        .then((result) => setRequests(result.needRequests || []))
+        .catch(() => {});
+    },
+    { debounceMs: 800 },
+  );
 
   const loadRequests = async () => {
     setIsLoading(true);

@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { publish } from "../../../../lib/realtime/bus";
 import { apiSuccess } from "../../../../lib/api/response";
 import { readJsonObject, readPositiveId } from "../../../../lib/api/validation";
 import { auditRequestContext, recordAudit } from "../../../../lib/audit";
@@ -59,6 +60,10 @@ export const createUpdateUserAccountHandler = (dependencies: Dependencies = {}) 
         ...auditRequestContext(request),
       });
 
+      // A disabled or re-roled account is signed out of its open tabs now, not at their next check.
+      if ((input.status !== undefined && input.status !== "ACTIVE") || input.roleCode !== undefined) {
+        publish({ type: "session.revoked" }, { accounts: [userId] });
+      }
       return apiSuccess({ account });
     },
     adminOnly(dependencies.auth),
@@ -88,6 +93,7 @@ export const createDeleteUserAccountHandler = (dependencies: Dependencies = {}) 
         ...auditRequestContext(request),
       });
 
+      publish({ type: "session.revoked" }, { accounts: [userId] });
       return apiSuccess({ success: true });
     },
     adminOnly(dependencies.auth),

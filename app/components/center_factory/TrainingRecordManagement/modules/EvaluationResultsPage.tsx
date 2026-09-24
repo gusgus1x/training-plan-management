@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { useRealtime } from "../../../useRealtime";
 import { useRouter } from "next/navigation";
 import { readEvaluationResponses, readEvaluationSummary } from "../../../../lib/trainingForms/client";
 import {
@@ -407,6 +408,10 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
   // mostly answered by supervisors, so an HRD who left the audience on "attendees" read zero and
   // had no way to tell that two replies were sitting behind the other button. Holding all four
   // also means switching audience redraws instead of flickering through a load.
+  // A form handed in while this page is open redraws the counts and charts.
+  const [summaryVersion, setSummaryVersion] = useState(0);
+  useRealtime(["evaluation.submitted"], () => setSummaryVersion((current) => current + 1), { debounceMs: 2000 });
+
   useEffect(() => {
     let cancelled = false;
     const read = (timing: EvaluationTimingStage, group: EvaluationRespondentGroup) =>
@@ -427,7 +432,7 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [planId]);
+  }, [planId, summaryVersion]);
 
   // A supervisor is only ever asked for the 30-day follow-up, so that is the only stage of theirs
   // that can carry answers. Reading an empty "after training" tab as "no supervisor replied" would

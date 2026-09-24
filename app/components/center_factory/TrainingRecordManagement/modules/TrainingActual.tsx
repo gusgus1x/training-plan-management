@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRealtime } from "../../../useRealtime";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
 import { useToast } from "../../../ToastHost";
@@ -1051,6 +1052,12 @@ export default function TrainingActual() {
       console.error("Failed to reload attendees", error);
     }
   };
+
+  // People scanning the QR code show up while HRD watches; drafts being typed are kept (see above).
+  useRealtime(["attendance.changed", "enrollment.changed"], () => void reloadEnrollments(), {
+    planId: selectedCourse?.id ?? null,
+    debounceMs: 800,
+  });
 
   // The general reload above deliberately keeps whatever HRD already has open in a draft, which
   // is right for protecting mid-typing edits but wrong here: HRD just graded a written answer and

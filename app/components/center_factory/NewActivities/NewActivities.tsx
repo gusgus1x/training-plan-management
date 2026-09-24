@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRealtime } from "../../useRealtime";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useAuthenticatedUser } from "../../AuthenticatedUserContext";
@@ -150,6 +151,18 @@ export default function NewActivities({
       setIsLoading(false);
     }
   };
+
+  // Someone else posting or editing: refetch without the page loader.
+  useRealtime(
+    ["activity.changed"],
+    () => {
+      fetch("/api/course-activities")
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => data && setActivities(data.activities || []))
+        .catch(() => {});
+    },
+    { debounceMs: 800 },
+  );
 
   useEffect(() => {
     setIsMounted(true);

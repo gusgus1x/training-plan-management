@@ -4,6 +4,7 @@ import { apiSuccess } from "../../../lib/api/response";
 import { readJsonObject } from "../../../lib/api/validation";
 import { createProtectedRoute, type ProtectedRouteOptions } from "../../../lib/auth/guard";
 import { trainingRecordRequestRepository } from "../../../lib/trainingRecordRequests/repository";
+import { publish } from "../../../lib/realtime/bus";
 import { RECORD_REQUEST_TYPES } from "../../../lib/trainingRecordRequests/types";
 
 type Dependencies = {
@@ -71,6 +72,8 @@ export const createSubmitRecordRequestHandler = (dependencies: Dependencies = {}
         dateTo: body.dateTo ? String(body.dateTo) : null,
       });
 
+      // The chosen section head's pending list; the id may be an account or a person, so both.
+      publish({ type: "recordRequest.changed" }, { employees: [employeeUserId, approverUserId], accounts: [approverUserId] });
       return apiSuccess({ request: created }, 201);
     },
     { ...dependencies.auth, allowedRoles: ["EMPLOYEE", "HRD_FACTORY", "HRD_CENTER", "ADMIN"] as const },

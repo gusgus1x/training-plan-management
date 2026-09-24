@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useConfirm } from "../../../ConfirmDialog";
+import { useRealtime } from "../../../useRealtime";
 import { useUiLanguage } from "../../../ThaiUiLocalization";
 import { getCourseCoverage } from "../../../../lib/trainingEnrollment/client";
 import {
@@ -225,10 +226,13 @@ export default function CourseCoveragePanel({ planId, courseTitle, isCenter, own
   const confirm = useConfirm();
   const [reloadKey, setReloadKey] = useState(0);
   // Tagged with the request it answers, so a new batch shows "loading" without resetting state in the effect.
-  const [loaded, setLoaded] = useState<{ key: string; rows: CourseCoverageEmployee[]; failed: boolean } | null>(null);
-  const requestKey = `${planId}|${reloadKey}`;
-  const rows = loaded?.key === requestKey ? loaded.rows : null;
-  const failed = loaded?.key === requestKey && loaded.failed;
+  const [loaded, setLoaded] = useState<{ key: string; planId: string; rows: CourseCoverageEmployee[]; failed: boolean } | null>(null);
+  // A refresh of the same batch keeps showing the old numbers until the new ones land.
+  const current = loaded?.planId === planId ? loaded : null;
+  const rows = current ? current.rows : null;
+  const failed = Boolean(current?.failed);
+  // Another batch of the course finishing, or check-ins, move the numbers: refetch quietly.
+  useRealtime(["enrollment.changed", "attendance.changed"], () => setReloadKey((key) => key + 1), { debounceMs: 2000 });
   const [view, setView] = useState<CoverageView>("target");
   const [company, setCompany] = useState("ALL");
   const [selectedSection, setSelectedSection] = useState<SectionKey | null>(null);
@@ -239,8 +243,8 @@ export default function CourseCoveragePanel({ planId, courseTitle, isCenter, own
     let active = true;
     const key = `${planId}|${reloadKey}`;
     getCourseCoverage(planId)
-      .then((result) => active && setLoaded({ key, rows: result.employees, failed: false }))
-      .catch(() => active && setLoaded({ key, rows: [], failed: true }));
+      .then((result) => active && setLoaded({ key, planId, rows: result.employees, failed: false }))
+      .catch(() => active && setLoaded({ key, planId, rows: [], failed: true }));
     return () => {
       active = false;
     };

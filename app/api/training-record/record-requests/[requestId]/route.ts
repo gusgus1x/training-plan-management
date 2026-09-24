@@ -4,6 +4,7 @@ import { apiSuccess } from "../../../../lib/api/response";
 import { readJsonObject } from "../../../../lib/api/validation";
 import { createProtectedRoute, type ProtectedRouteOptions } from "../../../../lib/auth/guard";
 import { trainingRecordRequestRepository } from "../../../../lib/trainingRecordRequests/repository";
+import { publish } from "../../../../lib/realtime/bus";
 
 type Dependencies = {
   auth?: ProtectedRouteOptions;
@@ -40,6 +41,7 @@ export const createDecideRecordRequestHandler = (dependencies: Dependencies = {}
         note,
       });
 
+      publish({ type: "recordRequest.changed" }, { employees: [updated?.employeeUserId], accounts: [principal.userId] });
       return apiSuccess({ request: updated });
     },
     { ...dependencies.auth, allowedRoles: ["EMPLOYEE", "HRD_FACTORY", "HRD_CENTER", "ADMIN"] as const },

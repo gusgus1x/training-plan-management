@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useRealtime } from "../useRealtime";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useUiLanguage, type UiLanguage } from "../ThaiUiLocalization";
 import { listEnrollments } from "../../lib/trainingEnrollment/client";
@@ -573,6 +574,21 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
 
     return () => { active = false; };
   }, []);
+
+  // Keeps the notice cards, hours and open batches current without the page loader.
+  useRealtime(
+    ["plan.changed", "enrollment.changed", "attendance.changed"],
+    () => {
+      void Promise.all([
+        loadWorkflowRollingPlans().catch(() => []),
+        listEnrollments({ planId: null, employeeId: null, employeeUserId: null }).catch(() => ({ enrollments: [] })),
+      ]).then(([plans, enrollResult]) => {
+        setRollingPlans(plans);
+        setEnrollments(enrollResult.enrollments || []);
+      });
+    },
+    { debounceMs: 1500 },
+  );
 
   const availableRollingPlans = useMemo(
     () =>

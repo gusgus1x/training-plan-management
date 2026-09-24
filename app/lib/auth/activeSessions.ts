@@ -1,3 +1,5 @@
+import { publish } from "../realtime/bus";
+
 export type ActiveUserSession = {
   userId: string;
   username: string;
@@ -46,6 +48,10 @@ export const trackUserSession = (data: {
 }) => {
   const existing = sessionsMap.get(data.userId);
   const now = new Date();
+  // Only a change Admin would see: someone new, or on another page. Heartbeats alone stay quiet.
+  if (!existing || (data.currentPage && data.currentPage !== existing.currentPage)) {
+    publish({ type: "session.changed" }, { roles: ["ADMIN"] });
+  }
   sessionsMap.set(data.userId, {
     userId: data.userId,
     username: data.username,
@@ -60,7 +66,7 @@ export const trackUserSession = (data: {
 };
 
 export const removeUserSession = (userId: string) => {
-  sessionsMap.delete(userId);
+  if (sessionsMap.delete(userId)) publish({ type: "session.changed" }, { roles: ["ADMIN"] });
 };
 
 export const getActiveSessionsList = (

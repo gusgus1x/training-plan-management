@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRealtime } from "../useRealtime";
 import {
   useAuthenticatedUser,
 } from "../AuthenticatedUserContext";
@@ -122,6 +123,16 @@ export default function RequestTrainingModule({
     listNeedRequests({ view: "approvals" })
       .then(({ needRequests }) => setApprovals(needRequests || []))
       .catch((err) => console.error("Failed to load requests awaiting approval", err));
+
+  // A head deciding, or HRD answering, updates both lists without a reload.
+  useRealtime(
+    ["needRequest.changed"],
+    () => {
+      void loadMyRequests();
+      void loadApprovals();
+    },
+    { debounceMs: 800 },
+  );
 
   useEffect(() => {
     void loadMyRequests();

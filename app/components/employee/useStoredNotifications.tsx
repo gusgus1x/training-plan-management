@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { listNotifications, markNotificationsAsRead } from "../../lib/notifications/client";
 import type { NotificationRecord } from "../../lib/notifications/types";
+import { useRealtime } from "../useRealtime";
 import { Award, Bell, CheckCircle2, FileText, XCircle } from "../icons/LucideIcons";
 
 export const storedIcon = (type: string | null, size: number) => {
@@ -29,6 +30,9 @@ const TO_DO_TYPES = new Set(["TRAINING_RECORD_REQUEST", "TRAINING_ENROLLMENT"]);
  */
 export function useStoredNotifications() {
   const [rows, setRows] = useState<NotificationRecord[]>([]);
+  // Bumped when the server says a notification was written, so the list below reloads.
+  const [version, setVersion] = useState(0);
+  useRealtime(["notification.created"], () => setVersion((current) => current + 1));
 
   useEffect(() => {
     let alive = true;
@@ -44,7 +48,7 @@ export function useStoredNotifications() {
       alive = false;
       window.removeEventListener(STORED_EVENT, load);
     };
-  }, []);
+  }, [version]);
 
   /** No ids marks every unread row read. */
   const markRead = useCallback((ids?: string[]) => {

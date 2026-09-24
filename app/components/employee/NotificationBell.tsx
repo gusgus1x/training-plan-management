@@ -9,6 +9,7 @@ import { useUiLanguage } from "../ThaiUiLocalization";
 import { Bell, ClipboardList, FileText } from "../icons/LucideIcons";
 import { markDismissed, markSeenInBell, noticeHref, noticeText, unreadCount, type EmployeeNotice } from "./employeeNotices";
 import { useEmployeeNotices } from "./useEmployeeNotices";
+import { useRealtime } from "../useRealtime";
 import { storedHref, storedIcon, useStoredNotifications } from "./useStoredNotifications";
 import styles from "./NotificationBell.module.css";
 
@@ -37,6 +38,8 @@ export default function NotificationBell() {
   const isThai = language === "th";
   const t = (th: string, en: string) => (isThai ? th : en);
   const [enrollments, setEnrollments] = useState<EnrollmentRecord[]>([]);
+  const [enrollmentsVersion, setEnrollmentsVersion] = useState(0);
+  useRealtime(["enrollment.changed", "plan.changed"], () => setEnrollmentsVersion((current) => current + 1), { debounceMs: 1000 });
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const { rows: stored, markRead } = useStoredNotifications();
@@ -49,7 +52,7 @@ export default function NotificationBell() {
     listEnrollments({ planId: null, employeeId: null, employeeUserId: null })
       .then((result) => setEnrollments(result.enrollments || []))
       .catch(() => setEnrollments([]));
-  }, []);
+  }, [enrollmentsVersion]);
 
   useEffect(() => {
     if (!isOpen) return;

@@ -1,4 +1,5 @@
 import type { PrismaClient } from "../../generated/prisma/client";
+import { publish } from "../realtime/bus";
 
 export type NotificationPayload = {
   title: string;
@@ -45,6 +46,8 @@ export const notifyEmployees = async (
         related_id: relatedId,
       })),
     });
+    // Every notification in the system is written here, so this one line makes them all live.
+    publish({ type: "notification.created" }, { employees: people });
   } catch (error) {
     console.warn(`Could not write ${payload?.relatedType ?? "a"} notification:`, error);
   }

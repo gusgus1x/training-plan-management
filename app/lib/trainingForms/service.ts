@@ -1,4 +1,5 @@
 import { trainingFormsRepository, type TrainingFormsRepository } from "./repository";
+import { publish } from "../realtime/bus";
 import type {
   EvaluationRespondentGroup,
   EvaluationTimingStage,
@@ -8,6 +9,14 @@ import type {
   SubmitAssessmentInput,
   SubmitEvaluationInput,
 } from "./types";
+
+
+/** A paper or form handed in: HRD's result pages and the employee's own record refresh. */
+const announceSubmission = (employeeUserId: string | null) => <Result>(result: Result) => {
+  publish({ type: "evaluation.submitted" }, { roles: ["HRD_CENTER", "HRD_FACTORY"] });
+  publish({ type: "enrollment.changed" }, { employees: [employeeUserId] });
+  return result;
+};
 
 export type TrainingFormsService = ReturnType<typeof createTrainingFormsService>;
 
@@ -21,7 +30,7 @@ export const createTrainingFormsService = (repository: TrainingFormsRepository =
     input: SubmitAssessmentInput,
     employeeId: string | null,
     employeeUserId: string | null,
-  ) => repository.submitAssessment(enrollmentId, stage, input, employeeId, employeeUserId),
+  ) => repository.submitAssessment(enrollmentId, stage, input, employeeId, employeeUserId).then(announceSubmission(employeeUserId)),
 
   readAssessmentReview: (
     enrollmentId: string,
@@ -44,7 +53,7 @@ export const createTrainingFormsService = (repository: TrainingFormsRepository =
     input: SubmitEvaluationInput,
     employeeId: string | null,
     employeeUserId: string | null,
-  ) => repository.submitEvaluation(enrollmentId, timing, input, employeeId, employeeUserId),
+  ) => repository.submitEvaluation(enrollmentId, timing, input, employeeId, employeeUserId).then(announceSubmission(employeeUserId)),
 
   listAssignedEvaluations: (reviewerUserId: string) => repository.listAssignedEvaluations(reviewerUserId),
 

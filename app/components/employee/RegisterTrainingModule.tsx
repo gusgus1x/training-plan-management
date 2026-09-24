@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useRealtime } from "../useRealtime";
 import { createPortal } from "react-dom";
 import { listCourses } from "../../lib/courses/client";
 import {
@@ -316,6 +317,17 @@ export default function RegisterTrainingModule({
     listEnrollments({ planId: null, employeeId: null, employeeUserId: null })
       .then((result) => setEnrollments(result.enrollments || []))
       .catch(() => undefined);
+
+  // Seats, dates and approvals change under an open page: refetch them quietly.
+  useRealtime(
+    ["plan.changed", "enrollment.changed"],
+    () => {
+      void loadWorkflowRollingPlans().then(setRollingPlans);
+      void reloadEnrollments();
+      reloadPendingApprovals();
+    },
+    { debounceMs: 1000 },
+  );
 
   // Load Rolling Plans, Standards, and Registrations from the API
   useEffect(() => {

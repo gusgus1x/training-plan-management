@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { useRealtime } from "../../../useRealtime";
 import { useRouter } from "next/navigation";
 import { type WorkflowStandard } from "../../../../lib/trainingWorkflow";
 import {
@@ -1194,6 +1195,9 @@ export default function TrainingAcceptSurvey({
       console.error("Failed to reload candidates", error);
     }
   };
+  // Someone registering, approving or cancelling on this batch refreshes the queues in place.
+  useRealtime(["enrollment.changed"], () => void reloadEnrollments(), { planId: selectedCourse?.id ?? null, debounceMs: 800 });
+
   const isFactoryOwnedByUser =
     roleMode === "factory" &&
     selectedCourse?.owner === "factory" &&
