@@ -359,10 +359,26 @@ export const createRollingPlanRepository = (client?: DatabaseClient) => {
         const oap = await loadOapSummary(db(), input.oapPlanId, companyId);
         const created = await db().$transaction(async (tx) => {
           const oapPlanId = BigInt(input.oapPlanId);
-          const batchNo = await nextBatchNo(tx, oapPlanId);
+          const batchNo = input.batchNo && input.batchNo > 0 ? input.batchNo : await nextBatchNo(tx, oapPlanId);
           const courseName = oap.course.course_name.trim() || oap.course.course_name_en?.trim() || "Course";
-          const planCode = `${oap.oap_code}-B${pad2(batchNo)}`;
-          const planName = `${courseName} - Batch ${batchNo}`;
+          const roundText = input.batchName?.trim() || "";
+          const roundDigits = parseInt(roundText.replace(/\D/g, ""), 10);
+          const roundNum = Number.isInteger(roundDigits) && roundDigits > 0 ? roundDigits : 1;
+
+          let planCode = `${oap.oap_code}-B${pad2(batchNo)}`;
+          const existingPlan = await tx.training_plan.findUnique({ where: { plan_code: planCode } });
+          if (existingPlan) {
+            planCode = `${oap.oap_code}-B${pad2(batchNo)}-R${pad2(roundNum)}`;
+            let counter = roundNum;
+            while (await tx.training_plan.findUnique({ where: { plan_code: planCode } })) {
+              counter++;
+              planCode = `${oap.oap_code}-B${pad2(batchNo)}-R${pad2(counter)}`;
+            }
+          }
+
+          const planName = roundText
+            ? `${courseName} - รุ่น ${batchNo} (${roundText})`
+            : `${courseName} - Batch ${batchNo}`;
 
           return tx.training_plan.create({
             data: {
@@ -606,6 +622,7 @@ const applyRemainingFields = async (
   input: UpdateRollingPlanInput,
   data: Prisma.training_planUncheckedUpdateInput,
 ) => {
+  if (input.batchNo !== undefined && input.batchNo > 0) data.batch_no = input.batchNo;
   if (input.batchName !== undefined) data.batch_name = input.batchName?.trim() || null;
   if (input.venue !== undefined) data.venue = input.venue.trim() || null;
   if (

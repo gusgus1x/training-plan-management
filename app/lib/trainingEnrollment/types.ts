@@ -156,6 +156,7 @@ export type EnrollmentPlanInfo = {
   validityMonths: number | null;
   planCode: string;
   planName: string;
+  batchNo?: number;
   batchName: string;
   /** The course itself, not the batch: what a training need request filed from this record points at. */
   courseId: string;

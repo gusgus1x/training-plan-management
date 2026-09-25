@@ -42,6 +42,7 @@ import { gradeSubmission, listPendingGrading, publishSubmissionResults, readEval
 import type { PendingGradingSubmission } from "../../../../lib/trainingForms/types";
 import type { CostBreakdown } from "../../../../lib/trainingRecord/types";
 import { formatDateDayMonthYear } from "../../../../lib/calendarDate";
+import { formatBatchText, formatRoundText, formatBatchRoundText } from "../../../../lib/batchRound";
 import styles from "./TrainingRecord.module.css";
 import actualStyles from "./TrainingActual.module.css";
 import {
@@ -314,6 +315,11 @@ type ActualCourse = {
   title: string;
   date: string;
   batch?: string;
+  batchNo?: number;
+  batchName?: string;
+  batchText?: string;
+  roundText?: string;
+  batchRoundLabel?: string;
   startTime?: string;
   endTime?: string;
   time: string;
@@ -735,7 +741,12 @@ export default function TrainingActual() {
         code: plan.course.code,
         title: plan.course.name,
         date: plan.trainingDate,
-        batch: plan.batch,
+        batchNo: plan.batchNo,
+        batchName: plan.batchName,
+        batchText: formatBatchText(plan, isThai),
+        roundText: formatRoundText(plan, isThai),
+        batchRoundLabel: formatBatchRoundText(plan, isThai),
+        batch: formatBatchRoundText(plan, isThai) || plan.batch,
         startTime: plan.startTime,
         endTime: plan.endTime,
         time: `${plan.startTime} - ${plan.endTime}`,
@@ -1580,10 +1591,7 @@ export default function TrainingActual() {
               </option>
               {availableSessions.map((session) => (
                 <option key={session.id} value={session.id}>
-                  {t(
-                    `${t("รุ่นที่", "Batch")} ${session.batch ?? "1"} / ${t("วันที่", "Date")} ${formatDateDayMonthYear(session.date, isThai)} (${session.time}) / ${t("ห้อง", "Room")} ${session.room}`,
-                    `Batch ${session.batch ?? "1"} / ${formatDateDayMonthYear(session.date, false)} (${session.time}) / room ${session.room}`,
-                  )}
+                  {session.batchRoundLabel || session.batch || "1"} / {formatDateDayMonthYear(session.date, isThai)} ({session.time}) / {t("ห้อง", "Room")} {session.room}
                 </option>
               ))}
             </select>
@@ -1615,7 +1623,7 @@ export default function TrainingActual() {
                     )}
                   </span>
                   <span className={actualStyles.batchBadge}>
-                    {t("รุ่นที่", "Batch")} <strong>{selectedCourse.batch ?? "1"}</strong>
+                    {selectedCourse.batchRoundLabel || `${t("รุ่นที่", "Batch")} ${selectedCourse.batch ?? "1"}`}
                   </span>
                   <span className={actualStyles.courseCodeTag}>
                     <Pin size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 3 }} />

@@ -351,6 +351,7 @@ const mapEnrollment = (row: EnrollmentWithRelations) => {
           : null,
       planCode: plan.plan_code,
       planName: plan.plan_name,
+      batchNo: plan.batch_no,
       batchName: plan.batch_name || `Batch ${plan.batch_no}`,
       courseId: oap.course.course_id.toString(),
       courseCode: oap.course.course_code,

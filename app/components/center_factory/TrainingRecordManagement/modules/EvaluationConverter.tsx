@@ -569,7 +569,11 @@ export default function EvaluationConverter() {
                 ...plans.map((plan) => ({
                   value: plan.rollingId,
                   label: `[${plan.course.code}] ${plan.course.name}`,
-                  secondaryLabel: `${formatDateRangeDayMonthYear(plan.trainingDate, plan.endDate, language === "th")}${plan.batch ? ` · ${t("รุ่น", "Batch")} ${plan.batch}` : ""}`,
+                  secondaryLabel: `${formatDateRangeDayMonthYear(plan.trainingDate, plan.endDate, language === "th")}${
+                    plan.batch
+                      ? ` · ${plan.batch.startsWith("รุ่น") || plan.batch.startsWith("Batch") ? plan.batch : `${t("รุ่น", "Batch")} ${plan.batch}`}`
+                      : ""
+                  }`,
                 })),
               ]}
             />

@@ -36,6 +36,11 @@ import {
   formatDateRangeDayMonthYear,
   formatTrainingDuration,
 } from "../../lib/calendarDate";
+import {
+  formatBatchText,
+  formatRoundText,
+  formatBatchRoundText,
+} from "../../lib/batchRound";
 import styles from "./RegisterTrainingModule.module.css";
 import {
   Globe,
@@ -77,6 +82,11 @@ export type AvailableCourseItem = {
   seats: string;
   status: string;
   round: string;
+  batchNo?: number;
+  batchName?: string;
+  batchText?: string;
+  roundText?: string;
+  batchRoundLabel?: string;
   type: string;
   duration: string;
   trainingStatus: "Not registered" | "Registered";
@@ -573,7 +583,12 @@ export default function RegisterTrainingModule({
             place: plan.location || "-",
             seats: `${plan.participants} ${t("ที่นั่ง", "seats")}`,
             status: statusLabel,
-            round: plan.batch || "-",
+            batchNo: plan.batchNo,
+            batchName: plan.batchName,
+            batchText: formatBatchText(plan, isThai),
+            roundText: formatRoundText(plan, isThai),
+            batchRoundLabel: formatBatchRoundText(plan, isThai),
+            round: formatBatchRoundText(plan, isThai) || plan.batch || "-",
             type: plan.course.courseType || "-",
             duration: formatTrainingDuration(plan.hours, plan.trainingDate, plan.endDate, isThai),
             trainingStatus: isRegistered ? "Registered" : "Not registered",
@@ -988,7 +1003,14 @@ export default function RegisterTrainingModule({
                   </span>
                   {isEnded ? <span className={styles.categoryPill} style={{ background: "rgba(100,116,139,0.15)", color: "#64748b" }}>{t("จบการอบรมแล้ว", "Ended")}</span> : null}
                 </div>
-                <span className={styles.codePill}>{course.id}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  {course.batchRoundLabel ? (
+                    <span className={styles.batchPill} title={t("รุ่นและรอบการอบรม", "Batch & Session")}>
+                      {course.batchRoundLabel}
+                    </span>
+                  ) : null}
+                  <span className={styles.codePill}>{course.id}</span>
+                </div>
               </div>
 
               {/* Main Body */}
@@ -1170,9 +1192,19 @@ export default function RegisterTrainingModule({
                       </h4>
                       <dl className={styles.detailDl}>
                         <div className={styles.detailItem}>
-                          <dt>{t("รหัสวิชา / รุ่นการอบรม", "Course Code / Batch")}</dt>
-                          <dd>{course.id} ({course.round})</dd>
+                          <dt>{t("รหัสวิชา (Course Code)", "Course Code")}</dt>
+                          <dd>{course.id}</dd>
                         </div>
+                        <div className={styles.detailItem}>
+                          <dt>{t("รุ่นการอบรม (Batch)", "Batch")}</dt>
+                          <dd>{course.batchText || "-"}</dd>
+                        </div>
+                        {course.roundText ? (
+                          <div className={styles.detailItem}>
+                            <dt>{t("รอบการอบรม (Session)", "Session / Round")}</dt>
+                            <dd>{course.roundText}</dd>
+                          </div>
+                        ) : null}
                         <div className={styles.detailItem}>
                           <dt>{t("ประเภทวิชา (Course Type)", "Course Type")}</dt>
                           <dd>{course.type} / {course.category}</dd>
@@ -1279,7 +1311,8 @@ export default function RegisterTrainingModule({
                       {registeringCourse.title}
                     </div>
                     <div style={{ fontSize: "0.82rem", color: "var(--ui-30-muted)" }}>
-                      <strong>{t("รหัสวิชา", "Course Code")}:</strong> {registeringCourse.id} • <strong>{t("วิทยากร", "Trainer")}:</strong> {registeringCourse.trainer || "-"}
+                      <strong>{t("รหัสวิชา", "Course Code")}:</strong> {registeringCourse.id}
+                      {registeringCourse.batchRoundLabel ? ` (${registeringCourse.batchRoundLabel})` : ""} • <strong>{t("วิทยากร", "Trainer")}:</strong> {registeringCourse.trainer || "-"}
                     </div>
                     <div style={{ fontSize: "0.82rem", color: "var(--ui-30-muted)" }}>
                       <strong>{t("วันที่อบรม", "Date")}:</strong> {registeringCourse.date} • <strong>{t("สถานที่", "Venue")}:</strong> {registeringCourse.place || "-"}

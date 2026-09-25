@@ -2709,83 +2709,179 @@
   box-shadow: none !important;
 }
 
-/* Section tabs below the participant list, styled like the Training Record detail tabs. */
+/* Section tabs below the participant list, styled with high contrast and clear visual hierarchy. */
+.surveyNavHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 22px 0 10px;
+  padding: 0 4px;
+}
+
+.surveyNavTitle {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--ui-30-ink, #0f172a);
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+:global([data-theme="dark"]) .surveyNavTitle,
+:global(.dark) .surveyNavTitle {
+  color: #f8fafc;
+}
+
 .surveyNavTabs {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
-  padding: 6px;
-  background: var(--ui-60-surface-soft);
-  border: 1px solid var(--ui-30-border);
-  border-radius: var(--ui-radius-lg, 12px);
-  margin: 0 0 4px;
+  gap: 10px;
+  padding: 8px 10px;
+  background: #f8fafc;
+  border: 2px solid #cbd5e1;
+  border-radius: 14px;
+  margin: 0 0 16px;
   position: sticky;
   top: 10px;
   z-index: 10;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
 }
 
 .surveyNavTab,
 .surveyNavTabActive {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   font: inherit;
-  font-size: 0.88rem;
+  font-size: 0.98rem;
   font-weight: 800;
-  padding: 8px 18px;
-  border-radius: var(--ui-radius-md, 8px);
-  border: 1px solid transparent;
+  padding: 10px 20px;
+  border-radius: 10px;
+  border: 1.5px solid transparent;
   cursor: pointer;
-  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   white-space: nowrap;
 }
 
+/* Light Theme - Inactive Tab */
 .surveyNavTab {
-  background: transparent;
-  color: var(--ui-30-muted);
+  background: #ffffff;
+  color: #334155;
+  border-color: #cbd5e1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .surveyNavTab:hover {
-  color: var(--ui-30-ink);
-  background: rgba(0, 0, 0, 0.04);
+  color: #047857;
+  background: #ecfdf5;
+  border-color: #10b981;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(16, 185, 129, 0.15);
 }
 
+/* Light Theme - Active Tab */
 .surveyNavTabActive {
-  background: var(--ui-60-surface);
-  color: var(--ui-30-primary);
-  border-color: var(--ui-30-primary-border);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  color: #ffffff !important;
+  border-color: #047857;
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.surveyNavTabActive:hover {
+  background: linear-gradient(135deg, #047857 0%, #065f46 100%);
+  color: #ffffff !important;
+}
+
+/* Dark Theme */
+:global([data-theme="dark"]) .surveyNavTabs,
+:global(.dark) .surveyNavTabs {
+  background: #1e293b;
+  border: 2px solid #334155;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
 }
 
 :global([data-theme="dark"]) .surveyNavTab,
 :global(.dark) .surveyNavTab {
-  color: #cbd5e1;
+  background: #0f172a;
+  color: #e2e8f0;
+  border-color: #334155;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
 }
 
 :global([data-theme="dark"]) .surveyNavTab:hover,
 :global(.dark) .surveyNavTab:hover {
-  background: rgba(255, 255, 255, 0.12);
-  color: #ffffff;
+  background: #1e293b;
+  color: #34d399;
+  border-color: #10b981;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+  transform: translateY(-1px);
 }
 
 :global([data-theme="dark"]) .surveyNavTabActive,
 :global(.dark) .surveyNavTabActive {
-  background: linear-gradient(135deg, #007a3d 0%, #047857 100%);
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
   color: #ffffff !important;
-  border-color: #10b981;
+  border-color: #34d399;
+  box-shadow: 0 4px 18px rgba(16, 185, 129, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
 }
 
+:global([data-theme="dark"]) .surveyNavTabActive:hover,
+:global(.dark) .surveyNavTabActive:hover {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff !important;
+}
+
+/* Badge inside Tabs */
 .surveyTabBadge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 22px;
-  height: 20px;
-  padding: 0 6px;
+  min-width: 26px;
+  height: 22px;
+  padding: 0 8px;
   border-radius: 999px;
-  background: var(--ui-30-primary-soft);
-  color: var(--ui-30-primary);
-  font-size: 0.72rem;
+  background: #e2e8f0;
+  color: #0f172a;
+  font-size: 0.8rem;
+  font-weight: 800;
+  transition: all 0.2s ease;
+}
+
+.surveyNavTab:hover .surveyTabBadge {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.surveyNavTabActive .surveyTabBadge {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+:global([data-theme="dark"]) .surveyNavTab .surveyTabBadge,
+:global(.dark) .surveyNavTab .surveyTabBadge {
+  background: #334155;
+  color: #f1f5f9;
+  border: 1px solid #475569;
+}
+
+:global([data-theme="dark"]) .surveyNavTab:hover .surveyTabBadge,
+:global(.dark) .surveyNavTab:hover .surveyTabBadge {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border-color: #10b981;
+}
+
+:global([data-theme="dark"]) .surveyNavTabActive .surveyTabBadge,
+:global(.dark) .surveyNavTabActive .surveyTabBadge {
+  background: #ffffff;
+  color: #047857;
+  border-color: #ffffff;
   font-weight: 900;
 }

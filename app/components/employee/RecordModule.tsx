@@ -38,6 +38,7 @@ import type {
 import SearchableSelect, { type SearchableSelectOption } from "../SearchableSelect";
 import AssignedEvaluations from "./AssignedEvaluations";
 import ModuleHeader from "./ModuleHeader";
+import { formatBatchRoundText } from "../../lib/batchRound";
 import styles from "./RecordModule.module.css";
 import {
   FileText,
@@ -1238,10 +1239,10 @@ export default function RecordModule({ tab = null, onRequestRefresher }: RecordM
                   {/* Horizontal Info Bar matching Image 2 */}
                   <div className={styles.infoBarGrid}>
                     <div className={styles.infoBarItem}>
-                      <span className={styles.infoBarLabel}>{t("รุ่นที่อบรม", "Batch")}</span>
+                      <span className={styles.infoBarLabel}>{t("รุ่นและรอบการอบรม", "Batch & Session")}</span>
                       <span className={styles.infoBarValue}>
                         <Tag size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-                        {enrollment.plan.batchName || "-"}
+                        {formatBatchRoundText(enrollment.plan, isThai) || enrollment.plan.batchName || "-"}
                       </span>
                     </div>
                     <div className={styles.infoBarItem}>

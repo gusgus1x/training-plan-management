@@ -59,6 +59,7 @@ export type RollingPlanFormOverrides = {
 
 export type CreateRollingPlanInput = {
   oapPlanId: string;
+  batchNo?: number;
   batchName: string | null;
   venue: string;
   trainingDate: string;

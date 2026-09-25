@@ -54,6 +54,7 @@ import {
 } from "../../../icons/LucideIcons";
 import FilterSelect, { matchesFilter, type FilterOption } from "../../../FilterSelect";
 import CourseCoveragePanel from "./CourseCoveragePanel";
+import { formatBatchText, formatRoundText, formatBatchRoundText } from "../../../../lib/batchRound";
 import styles from "./TrainingAcceptSurvey.module.css";
 
 export const trainingAcceptSurveyModule = {
@@ -79,6 +80,11 @@ type CourseSurvey = {
   ownerCompany: string;
   date: string;
   batch?: string;
+  batchNo?: number;
+  batchName?: string;
+  batchText?: string;
+  roundText?: string;
+  batchRoundLabel?: string;
   location?: string;
   startTime?: string;
   endTime?: string;
@@ -1056,7 +1062,12 @@ export default function TrainingAcceptSurvey({
                 ? "HRD Center"
                 : plan.ownerCompany ?? plan.company,
             date: plan.trainingDate,
-            batch: plan.batch,
+            batchNo: plan.batchNo,
+            batchName: plan.batchName,
+            batchText: formatBatchText(plan, isThai),
+            roundText: formatRoundText(plan, isThai),
+            batchRoundLabel: formatBatchRoundText(plan, isThai),
+            batch: formatBatchRoundText(plan, isThai) || plan.batch,
             location: plan.location,
             startTime: plan.startTime,
             endTime: plan.endTime,
@@ -2013,7 +2024,7 @@ export default function TrainingAcceptSurvey({
               </option>
               {availableSessions.map((session) => (
                 <option key={session.id} value={session.id}>
-                  รอบ {session.batch ?? "1"} / {session.date} / {session.startTime ?? "-"}-{session.endTime ?? "-"} / {session.location ?? "-"}
+                  {session.batchRoundLabel || session.batch || "รอบ 1"} / {session.date} / {session.startTime ?? "-"}-{session.endTime ?? "-"} / {session.location ?? "-"}
                 </option>
               ))}
             </select>
@@ -2043,9 +2054,15 @@ export default function TrainingAcceptSurvey({
                 <strong>{selectedCourse.date}</strong>
               </article>
               <article>
-                <span>Batch</span>
-                <strong>{selectedCourse.batch ?? "-"}</strong>
+                <span>{isThai ? "รุ่น (Batch)" : "Batch"}</span>
+                <strong>{selectedCourse.batchText || selectedCourse.batch || "-"}</strong>
               </article>
+              {selectedCourse.roundText ? (
+                <article>
+                  <span>{isThai ? "รอบ (Round)" : "Round"}</span>
+                  <strong>{selectedCourse.roundText}</strong>
+                </article>
+              ) : null}
               <article>
                 <span>Time</span>
                 <strong>{selectedCourse.startTime ?? "-"} - {selectedCourse.endTime ?? "-"}</strong>
@@ -2351,14 +2368,20 @@ export default function TrainingAcceptSurvey({
               </div>
             </section>
 
+            <div className={styles.surveyNavHeader}>
+              <h3 className={styles.surveyNavTitle}>
+                {isThai ? "ขั้นตอนและมุมมองการจัดการรายชื่อ" : "Participant Views & Management"}
+              </h3>
+            </div>
+
             <div className={styles.surveyNavTabs} role="tablist" aria-label="Survey sections">
               {(
                 [
-                  { tab: "approval", icon: <ClipboardList size={16} />, th: "อนุมัติ / ส่งรายชื่อ", en: "Approval / submission" },
-                  { tab: "coverage", icon: <BarChart3 size={16} />, th: "ประวัติการอบรม & Retrain", en: "Training history & retrain" },
-                  { tab: "target", icon: <Target size={16} />, th: "กลุ่มเป้าหมาย", en: "Target group", count: availableTargetEmployees.length },
-                  { tab: "additional", icon: <Users size={16} />, th: "นอกกลุ่มเป้าหมาย", en: "Out of target", count: additionalEmployees.length },
-                  { tab: "all", icon: <BookOpen size={16} />, th: "แสดงทั้งหมด", en: "View all" },
+                  { tab: "approval", icon: <ClipboardList size={20} />, th: "อนุมัติ / ส่งรายชื่อ", en: "Approval / submission" },
+                  { tab: "coverage", icon: <BarChart3 size={20} />, th: "ประวัติการอบรม & Retrain", en: "Training history & retrain" },
+                  { tab: "target", icon: <Target size={20} />, th: "กลุ่มเป้าหมาย", en: "Target group", count: availableTargetEmployees.length },
+                  { tab: "additional", icon: <Users size={20} />, th: "นอกกลุ่มเป้าหมาย", en: "Out of target", count: additionalEmployees.length },
+                  { tab: "all", icon: <BookOpen size={20} />, th: "แสดงทั้งหมด", en: "View all" },
                 ] as const
               ).map((item) => (
                 <button

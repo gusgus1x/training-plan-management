@@ -312,6 +312,26 @@
   font-family: var(--ui-font-mono, monospace);
 }
 
+.batchPill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(30, 64, 175, 0.08);
+  border: 1px solid rgba(30, 64, 175, 0.22);
+  color: #1e40af;
+  font-size: 0.72rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+:global([data-theme="dark"]) .batchPill,
+:global(.dark) .batchPill {
+  background: rgba(96, 165, 250, 0.15);
+  border-color: rgba(96, 165, 250, 0.3);
+  color: #93c5fd;
+}
+
 .cardMainBody {
   display: flex;
   flex-direction: column;

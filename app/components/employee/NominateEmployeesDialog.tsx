@@ -34,7 +34,7 @@ const matches = (nominee: Nominee, filters: Record<FilterKey, string>, known: Kn
   FILTERS.every(({ key }) => key === skip || matchesFilter(filters[key], known[key], nominee[key].values));
 
 type Props = {
-  course: { rollingId: string; id: string; title: string };
+  course: { rollingId: string; id: string; title: string; batchRoundLabel?: string; batch?: string };
   onClose: () => void;
 };
 
@@ -144,7 +144,10 @@ export default function NominateEmployeesDialog({ course, onClose }: Props) {
         <div className={registerStyles.modalHeader}>
           <div>
             <h3 className={registerStyles.modalTitle} id="nominate-title">{t("ส่งพนักงานเข้าอบรม", "Send employees to training")}</h3>
-            <p className={styles.subtitle}>{course.id} · {course.title}</p>
+            <p className={styles.subtitle}>
+              {course.id} · {course.title}
+              {course.batchRoundLabel ? ` (${course.batchRoundLabel})` : course.batch ? ` (${course.batch})` : ""}
+            </p>
           </div>
           <button type="button" className={styles.closeBtn} onClick={onClose} aria-label={t("ปิด", "Close")}>
             <XCircle size={20} />

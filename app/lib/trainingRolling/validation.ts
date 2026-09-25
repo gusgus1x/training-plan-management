@@ -35,8 +35,16 @@ const status = (value: unknown, fallback?: RollingPlanStatus): RollingPlanStatus
 const BATCH_NAME_MAX_LENGTH = 100;
 const VENUE_MAX_LENGTH = 500;
 
+const readOptionalInt = (input: InputObject, field: string): number | undefined => {
+  if (!hasOwn(input, field) || input[field] === undefined || input[field] === null || input[field] === "") return undefined;
+  const num = Number(input[field]);
+  if (!Number.isInteger(num) || num <= 0) throw invalid(field, "Value must be a positive integer");
+  return num;
+};
+
 export const parseCreateRollingPlan = (input: InputObject): CreateRollingPlanInput => ({
   oapPlanId: readRequiredString(input, "oapPlanId"),
+  ...(hasOwn(input, "batchNo") && input.batchNo !== undefined && input.batchNo !== null && input.batchNo !== "" ? { batchNo: readOptionalInt(input, "batchNo") } : {}),
   batchName: readOptionalString(input, "batchName", { maxLength: BATCH_NAME_MAX_LENGTH }),
   venue: readOptionalString(input, "venue", { maxLength: VENUE_MAX_LENGTH }) || "",
   trainingDate: readDate(input, "trainingDate"),
@@ -50,6 +58,7 @@ export const parseCreateRollingPlan = (input: InputObject): CreateRollingPlanInp
 export const parseUpdateRollingPlan = (input: InputObject): UpdateRollingPlanInput => {
   const update: UpdateRollingPlanInput = {};
   if (hasOwn(input, "oapPlanId")) update.oapPlanId = readRequiredString(input, "oapPlanId");
+  if (hasOwn(input, "batchNo")) update.batchNo = readOptionalInt(input, "batchNo");
   if (hasOwn(input, "batchName")) update.batchName = readOptionalString(input, "batchName", { maxLength: BATCH_NAME_MAX_LENGTH });
   if (hasOwn(input, "venue")) update.venue = readOptionalString(input, "venue", { maxLength: VENUE_MAX_LENGTH }) || "";
   if (hasOwn(input, "trainingDate")) update.trainingDate = readDate(input, "trainingDate");

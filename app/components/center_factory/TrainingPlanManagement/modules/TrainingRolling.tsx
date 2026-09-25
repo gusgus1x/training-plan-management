@@ -71,6 +71,9 @@ import {
   Trash2,
   CheckCircle2,
   XCircle,
+  RotateCw,
+  Info,
+  Lightbulb,
 } from "../../../icons/LucideIcons";
 import styles from "./TrainingRolling.module.css";
 
@@ -156,6 +159,8 @@ export type RollingPlan = {
   ownerCompany: string;
   batchNo: number;
   batch: string;
+  batchName?: string;
+  planCode?: string;
   location: string;
   trainingDate: string;
   endDate: string;
@@ -534,7 +539,11 @@ const mapRecordToRollingPlan = (record: RollingPlanRecord): RollingPlan => {
     ownerScope: record.owner,
     ownerCompany: record.ownerCompany,
     batchNo: record.batchNo,
-    batch: record.batchName || `Batch ${record.batchNo}`,
+    batch: record.batchName
+      ? (record.batchNo ? `รุ่น ${record.batchNo} (${record.batchName})` : record.batchName)
+      : `Batch ${record.batchNo}`,
+    batchName: record.batchName || "",
+    planCode: record.planCode,
     location: record.venue,
     trainingDate: record.trainingDate,
     endDate: record.endDate || record.trainingDate,
@@ -564,6 +573,8 @@ type RollingSessionForm = {
   id: string;
   dbId: string | null;
   status: RollingStatus;
+  batchNo: number;
+  batchMode: "EXISTING" | "NEW";
   batchName: string;
   location: string;
   trainingDate: string;
@@ -579,10 +590,17 @@ type RollingForm = {
   sessions: RollingSessionForm[];
 };
 
-const createEmptySession = (index = 0, batchName = ""): RollingSessionForm => ({
+const createEmptySession = (
+  index = 0,
+  batchNo = 1,
+  batchName = "",
+  batchMode: "EXISTING" | "NEW" = "NEW",
+): RollingSessionForm => ({
   id: `session-${Date.now()}-${index}`,
   dbId: null,
   status: "Planning",
+  batchNo,
+  batchMode,
   batchName,
   location: "",
   trainingDate: "",
@@ -1213,6 +1231,34 @@ export default function TrainingRolling() {
   );
   const selectedOap = oapSources.find((source) => source.id === form.oapId) ?? null;
 
+  const coursePlansHistory = useMemo(() => {
+    if (!selectedOap) return [];
+    const courseCode = selectedOap.course?.courseCode;
+    return rollingPlans.filter(
+      (p) => p.oapId === selectedOap.id || (courseCode && p.course?.code === courseCode)
+    );
+  }, [selectedOap, rollingPlans]);
+
+  const courseExistingBatches = useMemo(() => {
+    const batchMap = new Map<number, { batchNo: number; count: number; maxRound: number }>();
+    for (const p of coursePlansHistory) {
+      const bNo = p.batchNo || 1;
+      const entry = batchMap.get(bNo) || { batchNo: bNo, count: 0, maxRound: 0 };
+      entry.count++;
+      const roundDigits = parseInt((p.batch || "").replace(/\D/g, ""), 10);
+      if (!isNaN(roundDigits) && roundDigits > entry.maxRound) {
+        entry.maxRound = roundDigits;
+      }
+      batchMap.set(bNo, entry);
+    }
+    return Array.from(batchMap.values()).sort((a, b) => a.batchNo - b.batchNo);
+  }, [coursePlansHistory]);
+
+  const nextNewBatchNo = useMemo(() => {
+    if (courseExistingBatches.length === 0) return 1;
+    return Math.max(...courseExistingBatches.map((b) => b.batchNo)) + 1;
+  }, [courseExistingBatches]);
+
   const formatInstructorFullName = (ins: InstructorRecord | null | undefined): string => {
     if (!ins) return "";
     return [ins.title, ins.firstName, ins.lastName].filter(Boolean).join(" ").trim();
@@ -1485,20 +1531,26 @@ export default function TrainingRolling() {
   };
 
   const updateOap = (value: string) => {
-    const nextBatch = getNextBatchNumber(value);
-    setForm((current) => {
-      const isInitialOrNumeric = current.sessions.every(
-        (s) => !s.batchName || /^\d+$/.test(s.batchName.trim())
-      );
-      return {
-        ...current,
-        oapId: value,
-        sessions: current.sessions.map((session) => ({
-          ...session,
-          batchName: isInitialOrNumeric || !session.batchName ? nextBatch : session.batchName,
-        })),
-      };
-    });
+    const targetOap = oapSources.find((o) => o.id === value);
+    const courseCode = targetOap?.course?.courseCode;
+    const history = rollingPlans.filter(
+      (p) => p.oapId === value || (courseCode && p.course?.code === courseCode)
+    );
+    const existingBatches: number[] = Array.from(
+      new Set(history.map((p) => p.batchNo || 1))
+    ).sort((a, b) => a - b);
+    const nextBatch = existingBatches.length > 0 ? Math.max(...existingBatches) + 1 : 1;
+
+    setForm((current) => ({
+      ...current,
+      oapId: value,
+      sessions: current.sessions.map((session) => ({
+        ...session,
+        batchNo: nextBatch,
+        batchMode: "NEW",
+        batchName: "",
+      })),
+    }));
   };
 
   const updateSession = <Field extends Exclude<keyof RollingSessionForm, "id" | "dbId">>(
@@ -1516,13 +1568,17 @@ export default function TrainingRolling() {
 
   const addSession = () => {
     const prevSession = form.sessions[form.sessions.length - 1];
-    const defaultBatch =
-      prevSession?.batchName?.trim() || getNextBatchNumber(form.oapId);
+    const defaultBatchNo = prevSession?.batchNo ?? nextNewBatchNo;
     setForm((current) => ({
       ...current,
       sessions: [
         ...current.sessions,
-        createEmptySession(current.sessions.length, defaultBatch),
+        createEmptySession(
+          current.sessions.length,
+          defaultBatchNo,
+          "",
+          prevSession?.batchMode ?? "NEW"
+        ),
       ],
     }));
   };
@@ -1585,6 +1641,7 @@ export default function TrainingRolling() {
         const startDate = session.trainingDate || today;
         const input = {
           oapPlanId: selectedOap.id,
+          batchNo: session.batchNo || 1,
           batchName: session.batchName.trim() || null,
           venue: session.location.trim(),
           trainingDate: startDate,
@@ -1643,7 +1700,9 @@ export default function TrainingRolling() {
         id: p.rollingId || `session-${index}`,
         dbId: p.rollingId,
         status: p.status,
-        batchName: p.batch,
+        batchNo: p.batchNo || 1,
+        batchMode: "EXISTING",
+        batchName: p.batchName || p.batch || `รอบที่ ${index + 1}`,
         location: p.location,
         trainingDate: p.trainingDate,
         endDate: p.endDate || p.trainingDate,
@@ -1688,7 +1747,9 @@ export default function TrainingRolling() {
           id: plan.rollingId,
           dbId: plan.rollingId,
           status: plan.status,
-          batchName: plan.batch,
+          batchNo: plan.batchNo || 1,
+          batchMode: "EXISTING",
+          batchName: plan.batchName || plan.batch || "รอบที่ 1",
           location: plan.location,
           trainingDate: plan.trainingDate,
           endDate: plan.endDate || plan.trainingDate,
@@ -2003,11 +2064,52 @@ export default function TrainingRolling() {
                   </button>
                 </div>
 
+                {/* Course History Summary Banner */}
+                {selectedOap ? (
+                  <div className={styles.courseHistoryBanner}>
+                    <div className={styles.historyIcon}>
+                      <CalendarDays size={18} />
+                    </div>
+                    <div className={styles.historyText}>
+                      <strong>{t("ประวัติการจัดอบรมหลักสูตรนี้", "Course Training History")}</strong>
+                      <span>
+                        {coursePlansHistory.length > 0
+                          ? t(
+                              `หลักสูตรนี้เคยจัดมาแล้วทั้งหมด ${coursePlansHistory.length} รอบ (รุ่นล่าสุด: รุ่นที่ ${courseExistingBatches[courseExistingBatches.length - 1]?.batchNo ?? 1})`,
+                              `This course has been held ${coursePlansHistory.length} session(s) previously (Latest: Batch ${courseExistingBatches[courseExistingBatches.length - 1]?.batchNo ?? 1})`
+                            )
+                          : t("หลักสูตรนี้ยังไม่เคยมีประวัติการจัดอบรม (เริ่มต้นจัดเป็นรุ่นแรก)", "This course has not been scheduled yet (Starting 1st batch)")}
+                      </span>
+                    </div>
+                    <span className={styles.historyCountBadge}>
+                      {coursePlansHistory.length} {t("รอบที่ผ่านมา", "past sessions")}
+                    </span>
+                  </div>
+                ) : null}
+
                 <div className={styles.sessionList}>
-                  {form.sessions.map((session, index) => (
+                  {form.sessions.map((session, index) => {
+                    const foundBatch = courseExistingBatches.find((b) => b.batchNo === session.batchNo);
+                    const pastSessionsInBatch = coursePlansHistory.filter(
+                      (p) => (p.batchNo || 1) === session.batchNo && (!session.dbId || p.rollingId !== session.dbId)
+                    );
+                    const maxRoundInBatch = pastSessionsInBatch.reduce((max, p) => {
+                      const digits = parseInt((p.batchName || p.batch || "").replace(/\D/g, ""), 10);
+                      return !isNaN(digits) && digits > max ? digits : max;
+                    }, 0);
+                    const suggestedRoundNum = session.batchMode === "EXISTING"
+                      ? (maxRoundInBatch > 0 ? maxRoundInBatch + 1 : (pastSessionsInBatch.length + 1))
+                      : 1;
+                    const suggestedRoundName = language === "th" ? `รอบที่ ${suggestedRoundNum}` : `Round ${suggestedRoundNum}`;
+
+                    return (
                     <article className={styles.sessionCard} key={session.id}>
                       <div className={styles.sessionHeader}>
-                        <strong>{t(`รุ่นที่ ${index + 1}`, `Session ${index + 1}`)}</strong>
+                        <strong>
+                          {session.batchName?.trim()
+                            ? t(`รุ่นที่ ${session.batchNo} (${session.batchName.trim()})`, `Batch ${session.batchNo} (${session.batchName.trim()})`)
+                            : t(`รุ่นที่ ${session.batchNo}`, `Batch ${session.batchNo}`)}
+                        </strong>
                         <button
                           className={styles.removeSessionButton}
                           disabled={!selectedOap || form.sessions.length === 1 || session.status !== "Planning"}
@@ -2018,98 +2120,284 @@ export default function TrainingRolling() {
                           Remove
                         </button>
                       </div>
-                      <div className={styles.sessionGrid}>
-                        <label>
-                          <span>{language === 'th' ? 'รุ่นการอบรม (Batch)' : 'Batch'} <RequiredIndicator isFilled={Boolean(session.batchName.trim())} /></span>
-                          <input
-                            disabled={!selectedOap}
-                            placeholder={language === 'th' ? "เช่น 1, 2 หรือระบุชื่อรุ่น" : "Optional label, e.g. 1, 2 or Batch label"}
-                            value={session.batchName}
-                            onChange={(event) =>
-                              updateSession(session.id, "batchName", event.target.value)
-                            }
-                          />
-                        </label>
-                        <label>
-                          <span>{t("สถานที่จัดอบรม (Location)", "Location")} <RequiredIndicator isFilled={Boolean(session.location.trim())} /></span>
-                          <input
-                            disabled={!selectedOap}
-                            value={session.location}
-                            onChange={(event) =>
-                              updateSession(session.id, "location", event.target.value)
-                            }
-                          />
-                        </label>
 
-                        <label>
-                          <span>{t("วันที่เริ่ม (Start Date)", "Start Date")} <RequiredIndicator isFilled={Boolean(session.trainingDate.trim())} /></span>
-                          <input
-                            disabled={!selectedOap}
-                            type="date"
-                            value={session.trainingDate}
-                            onClick={(e) => {
-                              try {
-                                e.currentTarget.showPicker?.();
-                              } catch {}
-                            }}
-                            onChange={(event) => {
-                              const newDate = event.target.value;
-                              updateSession(session.id, "trainingDate", newDate);
-                              if (!session.endDate || session.endDate < newDate) {
-                                updateSession(session.id, "endDate", newDate);
-                              }
-                            }}
-                          />
-                        </label>
-                        <label>
-                          <span>{t("วันที่สิ้นสุด (End Date)", "End Date")} <RequiredIndicator isFilled={Boolean((session.endDate || session.trainingDate).trim())} /></span>
-                          <input
-                            disabled={!selectedOap}
-                            type="date"
-                            min={session.trainingDate}
-                            value={session.endDate || session.trainingDate}
-                            onClick={(e) => {
-                              try {
-                                e.currentTarget.showPicker?.();
-                              } catch {}
-                            }}
-                            onChange={(event) =>
-                              updateSession(session.id, "endDate", event.target.value)
-                            }
-                          />
-                        </label>
-                        <label>
-                          <span>{t("เวลาเริ่ม (Start Time)", "Start Time")} <RequiredIndicator isFilled={Boolean(session.startTime.trim())} /></span>
-                          <input
-                            disabled={!selectedOap}
-                            type="time"
-                            value={session.startTime}
-                            onClick={(e) => {
-                              try {
-                                e.currentTarget.showPicker?.();
-                              } catch {}
-                            }}
-                            onChange={(event) =>
-                              updateSession(session.id, "startTime", event.target.value)
-                            }
-                          />
-                        </label>
-                        <label>
-                          <span>{t("เวลาสิ้นสุด (End Time)", "End Time")} <RequiredIndicator isFilled={Boolean(session.endTime.trim())} /></span>
-                          <input
-                            disabled={!selectedOap}
-                            type="time"
-                            value={session.endTime}
-                            onClick={(e) => {
-                              try {
-                                e.currentTarget.showPicker?.();
-                              } catch {}
-                            }}
-                            onChange={(event) =>
-                              updateSession(session.id, "endTime", event.target.value)
-                            }
-                          />
-                        </label>
+                      {/* Stacked Layout: 1 Batch (Top) -> 2 Round (Bottom) */}
+                      <div className={styles.sessionStepBlocks}>
+                        {/* 1. กำหนดรุ่นการอบรม (Batch) - ด้านบน */}
+                        <div className={styles.stepBlock}>
+                          <div className={styles.sectionHeaderRow}>
+                            <span className={styles.sectionTitleLabel}>
+                              <Tag size={14} style={{ display: "inline", verticalAlign: "middle", marginRight: 6 }} />
+                              {t("1. กำหนดรุ่นการอบรม (Batch)", "1. Training Batch")}
+                              <RequiredIndicator isFilled={Boolean(session.batchNo)} />
+                            </span>
+                          </div>
+
+                          {/* สลับ เลือกรุ่นเดิม vs กำหนดรุ่นใหม่ */}
+                          {courseExistingBatches.length > 0 ? (
+                            <div className={styles.modeCardsGrid}>
+                              <button
+                                type="button"
+                                className={`${styles.modeSelectCard} ${session.batchMode === "EXISTING" ? styles.modeSelectCardActive : ""}`}
+                                onClick={() => {
+                                  const firstExisting = courseExistingBatches[0];
+                                  updateSession(session.id, "batchMode", "EXISTING");
+                                  updateSession(session.id, "batchNo", firstExisting?.batchNo ?? 1);
+                                }}
+                              >
+                                <div className={styles.modeRadioCircle}>
+                                  {session.batchMode === "EXISTING" ? <div className={styles.modeRadioDot} /> : null}
+                                </div>
+                                <div className={styles.modeCardTexts}>
+                                  <strong className={styles.modeCardTitle}>{t("เลือกรุ่นเดิมที่มีอยู่", "Select Existing Batch")}</strong>
+                                  <span className={styles.modeCardDesc}>{t("จัดรอบอบรมเพิ่มในรุ่นเดิม เช่น รุ่นที่ 1", "Schedule more rounds in an existing batch")}</span>
+                                </div>
+                              </button>
+
+                              <button
+                                type="button"
+                                className={`${styles.modeSelectCard} ${session.batchMode === "NEW" ? styles.modeSelectCardActive : ""}`}
+                                onClick={() => {
+                                  updateSession(session.id, "batchMode", "NEW");
+                                  updateSession(session.id, "batchNo", nextNewBatchNo);
+                                }}
+                              >
+                                <div className={styles.modeRadioCircle}>
+                                  {session.batchMode === "NEW" ? <div className={styles.modeRadioDot} /> : null}
+                                </div>
+                                <div className={styles.modeCardTexts}>
+                                  <strong className={styles.modeCardTitle}>{t("+ กำหนดเป็นรุ่นใหม่", "+ Create New Batch")}</strong>
+                                  <span className={styles.modeCardDesc}>{t(`เปิดรุ่นใหม่ ถัดจากรุ่นเดิม (แนะนำรุ่นที่ ${nextNewBatchNo})`, `Start next batch (e.g. Batch ${nextNewBatchNo})`)}</span>
+                                </div>
+                              </button>
+                            </div>
+                          ) : (
+                            <div className={styles.firstBatchAlert}>
+                              <Star size={14} style={{ marginRight: 6, flexShrink: 0 }} />
+                              <span>{t("หลักสูตรนี้ยังไม่เคยมีประวัติการจัดอบรม ระบบจะกำหนดให้เป็นรุ่นแรก (รุ่นที่ 1)", "This course has not been held yet. Defaulting to 1st batch.")}</span>
+                            </div>
+                          )}
+
+                          {/* ช่องเลือกรุ่น หรือ ระบุรุ่นใหม่ */}
+                          {session.batchMode === "EXISTING" && courseExistingBatches.length > 0 ? (
+                            <div className={styles.stepInputWrap}>
+                              <label className={styles.fullWidthField}>
+                                <span className={styles.subFieldLabel}>{t("เลือกรุ่นที่ต้องการจัดรอบเพิ่ม (Batch No.)", "Select Batch")}</span>
+                                <select
+                                  className={styles.stepInput}
+                                  value={session.batchNo}
+                                  onChange={(e) => {
+                                    const selectedBatchNo = parseInt(e.target.value, 10);
+                                    updateSession(session.id, "batchNo", selectedBatchNo);
+                                  }}
+                                >
+                                  {courseExistingBatches.map((b) => (
+                                    <option key={b.batchNo} value={b.batchNo}>
+                                      {t(`รุ่นที่ ${b.batchNo}`, `Batch ${b.batchNo}`)}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                              {foundBatch ? (
+                                <div className={styles.batchInfoPill}>
+                                  <Info size={12} style={{ flexShrink: 0, marginRight: 6 }} />
+                                  <span>
+                                    {t(`รุ่นที่ ${session.batchNo}: เคยจัดมาแล้ว ${foundBatch.count} รอบ`, `Batch ${session.batchNo}: held ${foundBatch.count} session(s) previously`)}
+                                  </span>
+                                </div>
+                              ) : null}
+                            </div>
+                          ) : (
+                            <div className={styles.stepInputWrap}>
+                              <label className={styles.fullWidthField}>
+                                <span className={styles.subFieldLabel}>{t("ระบุเลขรุ่นใหม่ (Batch No.)", "New Batch Number")}</span>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  className={styles.stepInput}
+                                  value={session.batchNo || ""}
+                                  placeholder={language === "th" ? `ระบุเลขรุ่น เช่น ${nextNewBatchNo}` : `e.g. ${nextNewBatchNo}`}
+                                  onChange={(e) => {
+                                    const val = parseInt(e.target.value, 10);
+                                    updateSession(session.id, "batchNo", isNaN(val) ? 1 : val);
+                                  }}
+                                />
+                              </label>
+                              <div className={styles.batchInfoPillNew}>
+                                <span>{t(`✨ รุ่นใหม่ที่กำลังจะเปิด (แนะนำรุ่นที่ ${session.batchNo || nextNewBatchNo})`, `✨ New upcoming batch (Batch ${session.batchNo || nextNewBatchNo})`)}</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* 2. กำหนดรอบการอบรม (Round) - ด้านล่าง */}
+                        <div className={styles.stepBlock}>
+                          <div className={styles.sectionHeaderRow}>
+                            <span className={styles.sectionTitleLabel}>
+                              <RotateCw size={14} style={{ display: "inline", verticalAlign: "middle", marginRight: 6 }} />
+                              {t("2. กำหนดรอบการอบรม (Round / Session)", "2. Training Round / Session")}
+                              <RequiredIndicator isFilled={Boolean(session.batchName.trim())} />
+                            </span>
+                            {suggestedRoundNum > 0 ? (
+                              <button
+                                type="button"
+                                className={styles.suggestionChip}
+                                title={t("คลิกเพื่อใส่ค่ารอบที่แนะนำ", "Click to set suggested round")}
+                                onClick={() => updateSession(session.id, "batchName", suggestedRoundName)}
+                              >
+                                <Lightbulb size={12} style={{ marginRight: 4, verticalAlign: "middle" }} />
+                                {t(`แนะนำ: ${suggestedRoundName}`, `Suggested: ${suggestedRoundName}`)}
+                              </button>
+                            ) : null}
+                          </div>
+
+                          {/* ช่องกรอกระบุรอบที่ต้องการจัด */}
+                          <div className={styles.stepInputWrap}>
+                            <label className={styles.fullWidthField}>
+                              <span className={styles.subFieldLabel}>{t("รอบที่เท่าไหร่ (Round)", "Round / Session No.")}</span>
+                              <input
+                                className={styles.stepInput}
+                                placeholder={language === "th" ? `ระบุรอบ เช่น ${suggestedRoundName} (หรือคลิกปุ่มแนะนำด้านบน)` : `e.g. ${suggestedRoundName} (or click suggested button above)`}
+                                value={session.batchName}
+                                onChange={(event) => updateSession(session.id, "batchName", event.target.value)}
+                              />
+                            </label>
+                          </div>
+
+                          {/* Dropdown แสดงประวัติรอบที่เคยจัดมาแล้ว (ดูเฉยๆ ไม่เปลี่ยนค่าฟอร์ม) */}
+                          {pastSessionsInBatch.length > 0 ? (
+                            <div className={styles.pastRoundsViewerBox}>
+                              <select
+                                className={styles.pastRoundsViewerSelect}
+                                value=""
+                                onChange={() => {
+                                  // Read-only viewer: ไม่ใส่ค่าลงในช่องกรอก ตามที่ระบุ
+                                }}
+                                title={t("ประวัติรอบที่เคยจัดในรุ่นนี้ (แสดงให้ดูเพื่ออ้างอิง)", "Past rounds held in this batch (view-only)")}
+                              >
+                                <option value="" disabled>
+                                  {t(`📋 ประวัติรอบที่เคยจัดในรุ่นนี้ (${pastSessionsInBatch.length} รอบ) ▾ (คลิกดูข้อมูลอ้างอิง)`, `📋 Past rounds held in this batch (${pastSessionsInBatch.length}) ▾ (view reference)`)}
+                                </option>
+                                {pastSessionsInBatch.map((p, pIdx) => {
+                                  const rName = p.batchName || p.batch || t(`รอบที่ ${pIdx + 1}`, `Round ${pIdx + 1}`);
+                                  const rDate = p.trainingDate ? formatDateDayMonthYear(p.trainingDate, isThai) : "";
+                                  const rLoc = p.location ? ` - ${p.location}` : "";
+                                  return (
+                                    <option key={p.rollingId || pIdx} value="" disabled>
+                                      {`• ${rName}${rDate ? ` (จัดวันที่ ${rDate})` : ""}${rLoc}`}
+                                    </option>
+                                  );
+                                })}
+                              </select>
+                            </div>
+                          ) : (
+                            <div className={styles.noPastRoundsPill}>
+                              <span>{t("✨ ยังไม่เคยมีประวัติรอบที่จัดมาก่อนในรุ่นนี้", "✨ No past rounds recorded in this batch yet")}</span>
+                            </div>
+                          )}
+
+                          {/* ป้ายสรุปรอบที่ระบุ */}
+                          {session.batchName.trim() ? (
+                            <div className={styles.roundInfoPill}>
+                              <span>{t(`✓ รอบที่จะจัด: ${session.batchName.trim()}`, `✓ Training round: ${session.batchName.trim()}`)}</span>
+                            </div>
+                          ) : (
+                            <div className={styles.roundInfoPillEmpty}>
+                              <span>{t("ระบุรอบที่ต้องการจัด หรือคลิกปุ่มแนะนำด้านบน", "Specify round or click suggested button above")}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* 3. กำหนดวัน-เวลา และสถานที่ */}
+                      <div className={styles.scheduleRowGroup}>
+                        <div className={styles.scheduleHeaderRow}>
+                          <span className={styles.compactSectionLabel}>
+                            <Clock size={13} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} />
+                            {t("3. กำหนดวัน-เวลา และสถานที่ (Schedule & Location)", "3. Schedule & Location")}
+                          </span>
+                        </div>
+                        <div className={styles.scheduleGrid4}>
+                          <label className={styles.compactField}>
+                            <span className={styles.subFieldLabel}>{t("วันที่เริ่ม (Start Date)", "Start Date")} <RequiredIndicator isFilled={Boolean(session.trainingDate.trim())} /></span>
+                            <input
+                              disabled={!selectedOap}
+                              type="date"
+                              className={styles.compactInput}
+                              value={session.trainingDate}
+                              onClick={(e) => {
+                                try {
+                                  e.currentTarget.showPicker?.();
+                                } catch {}
+                              }}
+                              onChange={(event) => {
+                                const newDate = event.target.value;
+                                updateSession(session.id, "trainingDate", newDate);
+                                if (!session.endDate || session.endDate < newDate) {
+                                  updateSession(session.id, "endDate", newDate);
+                                }
+                              }}
+                            />
+                          </label>
+                          <label className={styles.compactField}>
+                            <span className={styles.subFieldLabel}>{t("วันที่สิ้นสุด (End Date)", "End Date")} <RequiredIndicator isFilled={Boolean((session.endDate || session.trainingDate).trim())} /></span>
+                            <input
+                              disabled={!selectedOap}
+                              type="date"
+                              className={styles.compactInput}
+                              min={session.trainingDate}
+                              value={session.endDate || session.trainingDate}
+                              onClick={(e) => {
+                                try {
+                                  e.currentTarget.showPicker?.();
+                                } catch {}
+                              }}
+                              onChange={(event) => updateSession(session.id, "endDate", event.target.value)}
+                            />
+                          </label>
+                          <label className={styles.compactField}>
+                            <span className={styles.subFieldLabel}>{t("เวลาเริ่ม (Start Time)", "Start Time")} <RequiredIndicator isFilled={Boolean(session.startTime.trim())} /></span>
+                            <input
+                              disabled={!selectedOap}
+                              type="time"
+                              className={styles.compactInput}
+                              value={session.startTime}
+                              onClick={(e) => {
+                                try {
+                                  e.currentTarget.showPicker?.();
+                                } catch {}
+                              }}
+                              onChange={(event) => updateSession(session.id, "startTime", event.target.value)}
+                            />
+                          </label>
+                          <label className={styles.compactField}>
+                            <span className={styles.subFieldLabel}>{t("เวลาสิ้นสุดสูงสุด (Max End Time)", "Max End Time")} <RequiredIndicator isFilled={Boolean(session.endTime.trim())} /></span>
+                            <input
+                              disabled={!selectedOap}
+                              type="time"
+                              className={styles.compactInput}
+                              value={session.endTime}
+                              onClick={(e) => {
+                                try {
+                                  e.currentTarget.showPicker?.();
+                                } catch {}
+                              }}
+                              onChange={(event) => updateSession(session.id, "endTime", event.target.value)}
+                            />
+                          </label>
+                        </div>
+                        <div className={styles.locationFieldWrap}>
+                          <label className={styles.compactFieldFull}>
+                            <span className={styles.subFieldLabel}>{t("สถานที่จัดอบรม (Location)", "Location")} <RequiredIndicator isFilled={Boolean(session.location.trim())} /></span>
+                            <input
+                              disabled={!selectedOap}
+                              className={styles.compactInput}
+                              placeholder={language === "th" ? "เช่น ห้องอบรม 1 หรือ Online (Teams / Zoom)" : "e.g. Training Room 1 or Online (Teams / Zoom)"}
+                              value={session.location}
+                              onChange={(event) => updateSession(session.id, "location", event.target.value)}
+                            />
+                          </label>
+                        </div>
                       </div>
 
                       {/* Per-batch forms. Left on "ใช้ตามหลักสูตร" this batch simply follows the
@@ -2195,7 +2483,8 @@ export default function TrainingRolling() {
                         </details>
                       ) : null}
                     </article>
-                  ))}
+                  );
+                })}
                 </div>
               </div>
             </div>
@@ -2657,7 +2946,18 @@ export default function TrainingRolling() {
                               </div>
                             </td>
                             <td translate="no">{plan.course.courseGroup || "-"}</td>
-                            <td translate="no">{plan.batch}</td>
+                            <td translate="no">
+                              <div className={styles.batchBadgeGroup}>
+                                <span className={styles.batchPill}>
+                                  {t(`รุ่น ${plan.batchNo}`, `Batch ${plan.batchNo}`)}
+                                </span>
+                                {plan.batchName ? (
+                                  <span className={styles.roundPill}>
+                                    {plan.batchName.startsWith("รอบ") ? plan.batchName : t(`รอบ ${plan.batchName}`, `Round ${plan.batchName}`)}
+                                  </span>
+                                ) : null}
+                              </div>
+                            </td>
                             <td translate="no">
                               {formatDateRangeDayMonthYear(plan.trainingDate, plan.endDate, isThai)}
                               <span>{plan.startTime} - {plan.endTime}</span>

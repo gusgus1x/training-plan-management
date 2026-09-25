@@ -861,7 +861,7 @@ model training_plan {
   user_account_training_plan_updated_byTouser_account user_account?                      @relation("training_plan_updated_byTouser_account", fields: [updated_by], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_V6F049_training_plan_updated_by")
   training_plan_assessment_setting                    training_plan_assessment_setting[]
 
-  @@unique([oap_plan_id, batch_no], map: "UQ_training_plan_oap_batch_no")
+  @@index([oap_plan_id, batch_no], map: "IX_training_plan_oap_batch_no")
 }
 
 model training_plan_assessment_setting {

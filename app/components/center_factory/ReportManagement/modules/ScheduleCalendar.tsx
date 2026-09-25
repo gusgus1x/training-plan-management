@@ -22,6 +22,7 @@ import { ACTIVE_ENROLLMENT_STATUSES, type EnrollmentRecord } from "../../../../l
 import { useNotice } from "../../../NoticeDialog";
 import TypewriterLoader from "../../../TypewriterLoader";
 import CourseOutlineButton from "../../../CourseOutlineButton";
+import { formatBatchText, formatRoundText, formatBatchRoundShort } from "../../../../lib/batchRound";
 import styles from "./ScheduleCalendar.module.css";
 
 export const scheduleCalendarModule = {
@@ -1032,6 +1033,8 @@ export default function ScheduleCalendar({
                           );
                         };
 
+                        const batchRoundShort = formatBatchRoundShort(plan, uiLang === "th");
+
                         return (
                           <article
                             key={`${plan.rollingId}-w${weekIdx}-s${startCol}`}
@@ -1064,6 +1067,9 @@ export default function ScheduleCalendar({
                                     </span>
                                   ) : null}
                                   <strong className={styles.eventCourseTitle}>{plan.course.name}</strong>
+                                  {batchRoundShort ? (
+                                    <span className={styles.eventBatchBadge}>{batchRoundShort}</span>
+                                  ) : null}
                                   <span className={styles.multiDayBadge}>
                                     {uiLang === "th" ? `${totalDays} วัน` : `${totalDays} Days`}
                                   </span>
@@ -1114,6 +1120,9 @@ export default function ScheduleCalendar({
                                   <small className={styles.eventTimeText}>
                                     {plan.startTime}-{plan.endTime}
                                   </small>
+                                  {batchRoundShort ? (
+                                    <span className={styles.eventBatchBadge}>{batchRoundShort}</span>
+                                  ) : null}
                                   <span
                                     className={`${styles.companyPillBadge} ${styles[`companyPill_${companyKey}`] || styles.companyPill_ALL}`}
                                     title={companyKey === "ALL" ? (uiLang === "th" ? "ทุกบริษัท (All Companies)" : "All Companies") : companyKey}
@@ -1336,12 +1345,28 @@ export default function ScheduleCalendar({
                             <span className={styles.metaLabel}>{uiLang === "th" ? "สถานที่:" : "Venue:"}</span>
                             <span className={styles.metaValue}>{plan.location || (uiLang === "th" ? "ไม่ได้ระบุ" : "N/A")}</span>
                           </span>
-                          {plan.batch ? (
-                            <span className={`${styles.metaChip} ${styles.metaChipBatch}`}>
-                              <span className={styles.metaLabel}>{uiLang === "th" ? "รุ่น:" : "Batch:"}</span>
-                              <span className={styles.metaValue}>{plan.batch}</span>
-                            </span>
-                          ) : null}
+                          {(() => {
+                            const isTh = uiLang === "th";
+                            const batchLabel = formatBatchText(plan, isTh);
+                            const roundLabel = formatRoundText(plan, isTh);
+                            if (!batchLabel && !roundLabel) return null;
+                            return (
+                              <>
+                                {batchLabel ? (
+                                  <span className={`${styles.metaChip} ${styles.metaChipBatch}`}>
+                                    <span className={styles.metaLabel}>{isTh ? "รุ่น:" : "Batch:"}</span>
+                                    <span className={styles.metaValue}>{batchLabel}</span>
+                                  </span>
+                                ) : null}
+                                {roundLabel ? (
+                                  <span className={`${styles.metaChip} ${styles.metaChipRound}`}>
+                                    <span className={styles.metaLabel}>{isTh ? "รอบ:" : "Round:"}</span>
+                                    <span className={styles.metaValue}>{roundLabel}</span>
+                                  </span>
+                                ) : null}
+                              </>
+                            );
+                          })()}
                           {(() => {
                             const capacity = Number(plan.participants || 0);
                             if (!capacity) return null;

@@ -32,6 +32,7 @@ import { useUiLanguage } from "../ThaiUiLocalization";
 import ModuleHeader from "./ModuleHeader";
 import SearchableApproverSelect from "./SearchableApproverSelect";
 import { formatDateDayMonthYear } from "../../lib/calendarDate";
+import { formatBatchText, formatRoundText, formatBatchRoundText } from "../../lib/batchRound";
 import styles from "./RoadmapModule.module.css";
 import {
   User,
@@ -438,6 +439,11 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
       targetPositions: string[];
       targetLevels: string[];
       round: string;
+      batchNo?: number;
+      batchName?: string;
+      batchText?: string;
+      roundText?: string;
+      batchRoundLabel?: string;
       trainingDate: string;
       trainingStatus: string;
       hours: string;
@@ -561,7 +567,12 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
         targetFunctions,
         targetPositions: targetPositions.length > 0 ? targetPositions : ["All Positions"],
         targetLevels: targetLevels.length > 0 ? targetLevels : ["All Levels"],
-        round: rp.batch || "-",
+        batchNo: rp.batchNo,
+        batchName: rp.batchName,
+        batchText: formatBatchText(rp, isThai),
+        roundText: formatRoundText(rp, isThai),
+        batchRoundLabel: formatBatchRoundText(rp, isThai),
+        round: formatBatchRoundText(rp, isThai) || rp.batch || "-",
         trainingDate: rp.trainingDate || "-",
         trainingStatus,
         hours: rp.hours || notSpecified,
@@ -1376,9 +1387,19 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
                         {t("รายละเอียดชั้นเรียน & ผู้จัด", "Class Details & Provider")}
                       </div>
                       <div className={styles.detailColField}>
-                        <span className={styles.fieldLabel}>{t("รหัสวิชา / รุ่นการอบรม", "Course Code / Batch")}</span>
-                        <span className={styles.fieldValue}>{item.code} ({item.round})</span>
+                        <span className={styles.fieldLabel}>{t("รหัสวิชา (COURSE CODE)", "COURSE CODE")}</span>
+                        <span className={styles.fieldValue}>{item.code}</span>
                       </div>
+                      <div className={styles.detailColField}>
+                        <span className={styles.fieldLabel}>{t("รุ่นการอบรม (BATCH)", "BATCH")}</span>
+                        <span className={styles.fieldValue}>{item.batchText || "-"}</span>
+                      </div>
+                      {item.roundText ? (
+                        <div className={styles.detailColField}>
+                          <span className={styles.fieldLabel}>{t("รอบการอบรม (SESSION)", "SESSION / ROUND")}</span>
+                          <span className={styles.fieldValue}>{item.roundText}</span>
+                        </div>
+                      ) : null}
                       <div className={styles.detailColField}>
                         <span className={styles.fieldLabel}>{t("ประเภทวิชา (COURSE TYPE)", "COURSE TYPE")}</span>
                         <span className={styles.fieldValue}>{item.courseType} / {item.category}</span>

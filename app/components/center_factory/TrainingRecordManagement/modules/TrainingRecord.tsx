@@ -1284,7 +1284,11 @@ export default function TrainingRecord() {
                   Scope: {selectedCourse.owner === "CENTER" ? "Center Standard" : `${selectedCourse.ownerCompany || selectedCourse.company} Factory`}
                 </span>
                 {selectedCourse.batch ? (
-                  <span className={styles.heroBatchTag}>Batch {selectedCourse.batch}</span>
+                  <span className={styles.heroBatchTag}>
+                    {selectedCourse.batch.startsWith("รุ่น") || selectedCourse.batch.startsWith("Batch")
+                      ? selectedCourse.batch
+                      : `Batch ${selectedCourse.batch}`}
+                  </span>
                 ) : null}
               </div>
               <h3>{selectedCourse.title}</h3>
@@ -2471,7 +2475,11 @@ export default function TrainingRecord() {
                           </div>
                           <div className={styles.batchPillRow}>
                             <span className={styles.batchBadge}>
-                              {isThai ? `รุ่น ${course.batch || "-"}` : `Batch ${course.batch || "-"}`}
+                              {course.batch
+                                ? (course.batch.startsWith("รุ่น") || course.batch.startsWith("Batch")
+                                    ? course.batch
+                                    : (isThai ? `รุ่น ${course.batch}` : `Batch ${course.batch}`))
+                                : "-"}
                             </span>
                             {course.time ? (
                               <span className={styles.batchTimeText}>{course.time}</span>
