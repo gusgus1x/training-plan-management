@@ -20,6 +20,7 @@ import {
   type UserAccountStatus,
 } from "../../lib/userAccounts/types";
 import { ROLE_CODES, type RoleCode } from "../../lib/auth/types";
+import { formatDateDayMonthYear } from "../../lib/calendarDate";
 import Navbar from "../Navbar";
 import styles from "./AdminWorkspace.module.css";
 
@@ -391,7 +392,7 @@ export default function AdminWorkspace() {
                       {account.status}
                     </span>
                   </td>
-                  <td>{account.lastLoginAt?.slice(0, 10) || "Never"}</td>
+                  <td>{account.lastLoginAt ? formatDateDayMonthYear(account.lastLoginAt, false) : "Never"}</td>
                   <td className={styles.actions}>
                     <button
                       className={styles.secondaryButton}

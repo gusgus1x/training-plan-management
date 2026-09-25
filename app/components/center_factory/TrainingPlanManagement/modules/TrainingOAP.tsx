@@ -15,6 +15,7 @@ import {
   getCourseDisplayName,
   getCourseSecondaryName,
   isWorkflowOwner,
+  type PlanTargetGroupSnapshot,
   type WorkflowCourse,
   type WorkflowStandard,
 } from "../../../../lib/trainingWorkflow";
@@ -200,6 +201,68 @@ const RequiredIndicator = ({ isFilled }: { isFilled: boolean }) => (
     <span className={styles.indicatorDot} />
   </span>
 );
+
+const resolvePlanStandard = (plan: OapPlan, standards: WorkflowStandard[]) => {
+  const snapshot = (plan as unknown as { targetSnapshot?: PlanTargetGroupSnapshot }).targetSnapshot;
+  const courseAny = plan.course as unknown as {
+    targetPositions?: string[];
+    targetLevels?: string[];
+    targetCompanies?: string[];
+    orgScope?: {
+      functionName?: string;
+      division?: string;
+      department?: string;
+      section?: string;
+    };
+  };
+
+  if (snapshot) {
+    return {
+      companies: snapshot.targetCompanies || [],
+      positions: snapshot.targetPositions || [],
+      levels: snapshot.targetLevels || [],
+      functionName: snapshot.orgScope?.functionName || "",
+      division: snapshot.orgScope?.division || "",
+      department: snapshot.orgScope?.department || "",
+      section: snapshot.orgScope?.section || "",
+      targetGroup: snapshot.targetGroup || plan.course.targetGroup,
+      isSnapshot: true,
+    };
+  }
+
+  if (
+    courseAny?.targetPositions?.length ||
+    courseAny?.targetLevels?.length ||
+    courseAny?.targetCompanies?.length ||
+    courseAny?.orgScope
+  ) {
+    return {
+      companies: courseAny.targetCompanies || [],
+      positions: courseAny.targetPositions || [],
+      levels: courseAny.targetLevels || [],
+      functionName: courseAny.orgScope?.functionName || "",
+      division: courseAny.orgScope?.division || "",
+      department: courseAny.orgScope?.department || "",
+      section: courseAny.orgScope?.section || "",
+      targetGroup: plan.course.targetGroup,
+      isSnapshot: true,
+    };
+  }
+
+  // Fallback 1: match standard by courseId AND planYear
+  const yearMatched = standards.find(
+    (item) =>
+      item.courseId === plan.course.id &&
+      (item as unknown as { standardYear?: number }).standardYear === plan.planYear,
+  );
+  if (yearMatched) return { ...yearMatched, isSnapshot: false };
+
+  // Fallback 2: match standard by courseId
+  const courseMatched = standards.find((item) => item.courseId === plan.course.id);
+  if (courseMatched) return { ...courseMatched, isSnapshot: false };
+
+  return null;
+};
 
 export default function TrainingOAP({ username = "Current user" }: TrainingOAPProps) {
   const router = useRouter();
@@ -1912,11 +1975,21 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                                     </div>
 
                                     {(() => {
-                                      const std = standards.find((item) => item.courseId === plan.course.id);
+                                      const std = resolvePlanStandard(plan, standards);
                                       return (
                                         <div className={styles.previewCard}>
-                                          <div className={styles.previewCardHeader}><span><Target size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />{t("กลุ่มเป้าหมาย (Target Group)", "Target Group")}</span></div>
-                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("กลุ่มผู้เข้าอบรม", "Target Audience")}</span><span className={styles.previewFieldValue}>{plan.course.targetGroup}</span></div>
+                                          <div className={styles.previewCardHeader}>
+                                            <span>
+                                              <Target size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+                                              {t("กลุ่มเป้าหมาย (Target Group)", "Target Group")}
+                                              {std?.isSnapshot ? (
+                                                <span style={{ marginLeft: 8, fontSize: "0.75rem", padding: "2px 6px", borderRadius: 4, background: "rgba(34, 197, 94, 0.1)", color: "#16a34a", border: "1px solid rgba(34, 197, 94, 0.25)", fontWeight: 500 }}>
+                                                  {t("เกณฑ์ ณ วันบันทึกแผน", "Saved Plan Target")}
+                                                </span>
+                                              ) : null}
+                                            </span>
+                                          </div>
+                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("กลุ่มผู้เข้าอบรม", "Target Audience")}</span><span className={styles.previewFieldValue}>{std?.targetGroup || plan.course.targetGroup}</span></div>
                                           <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}>
                                             <span className={styles.previewFieldLabel}>Standard Companies</span>
                                             {std?.companies?.length ? (
@@ -2005,7 +2078,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
 
 
                                     {(() => {
-                                      const std = standards.find((item) => item.courseId === plan.course.id);
+                                      const std = resolvePlanStandard(plan, standards);
                                       const companies = std?.companies ?? [];
                                       const estimate = calculateBudgetEstimate({
                                         totalBudget: plan.budget,

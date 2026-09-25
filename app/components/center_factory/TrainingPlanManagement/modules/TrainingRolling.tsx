@@ -15,6 +15,7 @@ import {
   getCourseDisplayName,
   getCourseSecondaryName,
   isWorkflowOwner,
+  type PlanTargetGroupSnapshot,
   type WorkflowCourse,
   type WorkflowOwner,
   type WorkflowStandard,
@@ -44,7 +45,11 @@ import { useToast } from "../../../ToastHost";
 import { useUiLanguage } from "../../../ThaiUiLocalization";
 import TypewriterLoader from "../../../TypewriterLoader";
 import SearchableSelect from "../../../SearchableSelect";
-import { getLocalDateString } from "../../../../lib/calendarDate";
+import {
+  getLocalDateString,
+  formatDateDayMonthYear,
+  formatDateRangeDayMonthYear,
+} from "../../../../lib/calendarDate";
 import {
   Search,
   ClipboardCheck,
@@ -788,6 +793,127 @@ const pageWindow = (current: number, totalPages: number) => {
   return { start, end };
 };
 
+const resolveRollingPlanStandard = (plan: RollingPlan, standards: WorkflowStandard[]) => {
+  const snapshot = (plan as unknown as { targetSnapshot?: PlanTargetGroupSnapshot }).targetSnapshot;
+  const courseAny = plan.course as unknown as {
+    targetPositions?: string[];
+    targetLevels?: string[];
+    targetCompanies?: string[];
+    orgScope?: {
+      functionName?: string;
+      division?: string;
+      department?: string;
+      section?: string;
+    };
+  };
+
+  if (snapshot) {
+    return {
+      companies: snapshot.targetCompanies || [],
+      positions: snapshot.targetPositions || [],
+      levels: snapshot.targetLevels || [],
+      functionName: snapshot.orgScope?.functionName || "",
+      division: snapshot.orgScope?.division || "",
+      department: snapshot.orgScope?.department || "",
+      section: snapshot.orgScope?.section || "",
+      targetGroup: snapshot.targetGroup || plan.course?.targetGroup || "",
+      isSnapshot: true,
+    };
+  }
+
+  if (
+    courseAny?.targetPositions?.length ||
+    courseAny?.targetLevels?.length ||
+    courseAny?.targetCompanies?.length ||
+    courseAny?.orgScope
+  ) {
+    return {
+      companies: courseAny.targetCompanies || [],
+      positions: courseAny.targetPositions || [],
+      levels: courseAny.targetLevels || [],
+      functionName: courseAny.orgScope?.functionName || "",
+      division: courseAny.orgScope?.division || "",
+      department: courseAny.orgScope?.department || "",
+      section: courseAny.orgScope?.section || "",
+      targetGroup: plan.course?.targetGroup || "",
+      isSnapshot: true,
+    };
+  }
+
+  const planYear = plan.trainingDate ? parseInt(plan.trainingDate.slice(0, 4), 10) : undefined;
+  if (planYear) {
+    const yearMatched = standards.find(
+      (item) => item.courseId === plan.course?.id && (item as unknown as { standardYear?: number }).standardYear === planYear,
+    );
+    if (yearMatched) return { ...yearMatched, isSnapshot: false };
+  }
+
+  const courseMatched = standards.find((item) => item.courseId === plan.course?.id);
+  if (courseMatched) return { ...courseMatched, isSnapshot: false };
+
+  return null;
+};
+
+const resolveRollingOapStandard = (oap: OapPlanRecord, standards: WorkflowStandard[]) => {
+  const snapshot = (oap as unknown as { targetSnapshot?: PlanTargetGroupSnapshot }).targetSnapshot;
+  const courseAny = oap.course as unknown as {
+    targetPositions?: string[];
+    targetLevels?: string[];
+    targetCompanies?: string[];
+    orgScope?: {
+      functionName?: string;
+      division?: string;
+      department?: string;
+      section?: string;
+    };
+  };
+
+  if (snapshot) {
+    return {
+      companies: snapshot.targetCompanies || [],
+      positions: snapshot.targetPositions || [],
+      levels: snapshot.targetLevels || [],
+      functionName: snapshot.orgScope?.functionName || "",
+      division: snapshot.orgScope?.division || "",
+      department: snapshot.orgScope?.department || "",
+      section: snapshot.orgScope?.section || "",
+      targetGroup: snapshot.targetGroup || oap.course?.targetGroup || "",
+      isSnapshot: true,
+    };
+  }
+
+  if (
+    courseAny?.targetPositions?.length ||
+    courseAny?.targetLevels?.length ||
+    courseAny?.targetCompanies?.length ||
+    courseAny?.orgScope
+  ) {
+    return {
+      companies: courseAny.targetCompanies || [],
+      positions: courseAny.targetPositions || [],
+      levels: courseAny.targetLevels || [],
+      functionName: courseAny.orgScope?.functionName || "",
+      division: courseAny.orgScope?.division || "",
+      department: courseAny.orgScope?.department || "",
+      section: courseAny.orgScope?.section || "",
+      targetGroup: oap.course?.targetGroup || "",
+      isSnapshot: true,
+    };
+  }
+
+  if (oap.planYear) {
+    const yearMatched = standards.find(
+      (item) => item.courseId === oap.course?.id && (item as unknown as { standardYear?: number }).standardYear === oap.planYear,
+    );
+    if (yearMatched) return { ...yearMatched, isSnapshot: false };
+  }
+
+  const courseMatched = standards.find((item) => item.courseId === oap.course?.id);
+  if (courseMatched) return { ...courseMatched, isSnapshot: false };
+
+  return null;
+};
+
 export default function TrainingRolling() {
   const router = useRouter();
   const { language } = useUiLanguage();
@@ -1527,7 +1653,7 @@ export default function TrainingRolling() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           course,
-          standard: standards.find((item) => item.courseId === course.id) ?? null,
+          standard: resolveRollingPlanStandard(plan, standards),
           oapPlan,
           schedule,
           budget,
@@ -1776,7 +1902,7 @@ export default function TrainingRolling() {
                       return next;
                     })
                   }
-                  sessionLabels={form.sessions.map((session, index) => `${t("รุ่น", "Session")} ${session.batchName || index + 1}${session.trainingDate ? ` · ${session.trainingDate}` : ""}`)}
+                  sessionLabels={form.sessions.map((session, index) => `${t("รุ่น", "Session")} ${session.batchName || index + 1}${session.trainingDate ? ` · ${formatDateRangeDayMonthYear(session.trainingDate, session.endDate, isThai)}` : ""}`)}
                   targetSession={handoffSession}
                   onTargetSession={setHandoffSession}
                   planCompanyCode={selectedOap?.owner === "FACTORY" ? selectedOap.ownerCompany : null}
@@ -2177,9 +2303,16 @@ export default function TrainingRolling() {
                       </span>
                     </div>
                     {(() => {
-                      const std = standards.find((item) => item.courseId === selectedOap.course.id);
+                      const std = resolveRollingOapStandard(selectedOap, standards);
                       return (
                         <>
+                          {std?.isSnapshot ? (
+                            <div style={{ padding: "0 0 8px 0" }}>
+                              <span style={{ fontSize: "0.75rem", padding: "2px 6px", borderRadius: 4, background: "rgba(34, 197, 94, 0.1)", color: "#16a34a", border: "1px solid rgba(34, 197, 94, 0.25)", fontWeight: 500 }}>
+                                {t("เกณฑ์ ณ วันบันทึกแผน", "Saved Plan Target")}
+                              </span>
+                            </div>
+                          ) : null}
                           <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}>
                             <span className={styles.previewFieldLabel}>Companies</span>
                             {std?.companies?.length ? (
@@ -2444,7 +2577,7 @@ export default function TrainingRolling() {
                             <td translate="no">{plan.course.courseGroup || "-"}</td>
                             <td translate="no">{plan.batch}</td>
                             <td translate="no">
-                              {plan.trainingDate}
+                              {formatDateRangeDayMonthYear(plan.trainingDate, plan.endDate, isThai)}
                               <span>{plan.startTime} - {plan.endTime}</span>
                             </td>
                             <td translate="no">{plan.location || "-"}</td>
@@ -2500,16 +2633,21 @@ export default function TrainingRolling() {
                                     </div>
 
                                     {(() => {
-                                      const std = standards.find((item) => item.courseId === plan.course.id);
+                                      const std = resolveRollingPlanStandard(plan, standards);
                                       return (
                                         <div className={styles.previewCard}>
                                           <div className={styles.previewCardHeader}>
                                             <span>
                                               <Target size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
                                               {t("กลุ่มเป้าหมาย (Target Group)", "Target Group")}
+                                              {std?.isSnapshot ? (
+                                                <span style={{ marginLeft: 8, fontSize: "0.75rem", padding: "2px 6px", borderRadius: 4, background: "rgba(34, 197, 94, 0.1)", color: "#16a34a", border: "1px solid rgba(34, 197, 94, 0.25)", fontWeight: 500 }}>
+                                                  {t("เกณฑ์ ณ วันบันทึกแผน", "Saved Plan Target")}
+                                                </span>
+                                              ) : null}
                                             </span>
                                           </div>
-                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("กลุ่มผู้เข้าอบรม", "Target Audience")}</span><span className={styles.previewFieldValue}>{plan.course.targetGroup}</span></div>
+                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("กลุ่มผู้เข้าอบรม", "Target Audience")}</span><span className={styles.previewFieldValue}>{std?.targetGroup || plan.course.targetGroup}</span></div>
                                           <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}>
                                             <span className={styles.previewFieldLabel}>Standard Companies</span>
                                             {std?.companies?.length ? (
@@ -2616,7 +2754,7 @@ export default function TrainingRolling() {
                                     })()}
 
                                     {(() => {
-                                      const std = standards.find((item) => item.courseId === plan.course.id);
+                                      const std = resolveRollingPlanStandard(plan, standards);
                                       const companies = std?.companies ?? [];
                                       const estimate = calculateBudgetEstimate({
                                         totalBudget: plan.budget,

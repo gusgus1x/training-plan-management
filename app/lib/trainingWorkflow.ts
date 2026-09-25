@@ -30,9 +30,31 @@ export type WorkflowCourse = {
   owner: WorkflowOwner;
   ownerCompany?: string;
   createdBy?: string;
+  targetPositions?: string[];
+  targetLevels?: string[];
+  targetCompanies?: string[];
+  orgScope?: {
+    functionName?: string;
+    division?: string;
+    department?: string;
+    section?: string;
+  };
   /** Courses that must be completed before this one can be registered for. Empty/undefined means
    *  no condition. See app/lib/courses/repository.ts and prisma/migrations/31_Add_Course_Prerequisite.sql. */
   prerequisites?: Array<{ id: string; courseCode: string; courseName: string }>;
+};
+
+export type PlanTargetGroupSnapshot = {
+  targetGroup?: string;
+  targetPositions?: string[];
+  targetLevels?: string[];
+  targetCompanies?: string[];
+  orgScope?: {
+    functionName?: string;
+    division?: string;
+    department?: string;
+    section?: string;
+  };
 };
 
 export const getCourseDisplayName = (course?: WorkflowCourse | null): string => {

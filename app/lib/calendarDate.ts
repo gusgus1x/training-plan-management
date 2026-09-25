@@ -103,3 +103,165 @@ export const isCourseDateOrTimeEnded = (
   return endDateTime.getTime() < now.getTime();
 };
 
+export const TH_SHORT_MONTHS = [
+  "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
+  "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค.",
+] as const;
+
+export const EN_SHORT_MONTHS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+] as const;
+
+/**
+ * Parses day, month (1-12), and year from various date string formats:
+ * - YYYY-MM-DD or YYYY/MM/DD
+ * - ISO string (YYYY-MM-DDTHH:mm:ss...)
+ * - DD/MM/YYYY or DD-MM-YYYY
+ */
+export const parseDateParts = (
+  dateStr?: string | null,
+): { day: number; month: number; year: number } | null => {
+  if (!dateStr || dateStr === "-" || !dateStr.trim()) return null;
+  const clean = dateStr.trim();
+
+  // YYYY-MM-DD or ISO
+  const isoMatch = clean.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+  if (isoMatch) {
+    const year = parseInt(isoMatch[1], 10);
+    const month = parseInt(isoMatch[2], 10);
+    const day = parseInt(isoMatch[3], 10);
+    if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+      return { day, month, year };
+    }
+  }
+
+  // DD/MM/YYYY or DD-MM-YYYY
+  const dmyMatch = clean.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/);
+  if (dmyMatch) {
+    const day = parseInt(dmyMatch[1], 10);
+    const month = parseInt(dmyMatch[2], 10);
+    const year = parseInt(dmyMatch[3], 10);
+    if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+      return { day, month, year };
+    }
+  }
+
+  // Fallback to JS Date
+  const parsed = new Date(clean);
+  if (!isNaN(parsed.getTime())) {
+    return {
+      day: parsed.getDate(),
+      month: parsed.getMonth() + 1,
+      year: parsed.getFullYear(),
+    };
+  }
+
+  return null;
+};
+
+/**
+ * Formats a single date as "Day Month Year" with short month:
+ * Thai: "1 ต.ค. 2026"
+ * English: "1 Oct 2026"
+ */
+export const formatDateDayMonthYear = (
+  dateStr?: string | null,
+  isThai: boolean = true,
+): string => {
+  const parts = parseDateParts(dateStr);
+  if (!parts) return dateStr || "-";
+
+  const monthLabel = isThai
+    ? TH_SHORT_MONTHS[parts.month - 1] ?? String(parts.month)
+    : EN_SHORT_MONTHS[parts.month - 1] ?? String(parts.month);
+
+  return `${parts.day} ${monthLabel} ${parts.year}`;
+};
+
+/**
+ * Formats a date range as Day Month Year:
+ * - Single day: "1 ต.ค. 2026"
+ * - Multi-day: "1 ต.ค. 2026 - 2 ต.ค. 2026" (or across months "30 ก.ย. 2026 - 2 ต.ค. 2026")
+ */
+export const formatDateRangeDayMonthYear = (
+  startDateStr?: string | null,
+  endDateStr?: string | null,
+  isThai: boolean = true,
+): string => {
+  if (!startDateStr || startDateStr === "-") return "-";
+  const startFormatted = formatDateDayMonthYear(startDateStr, isThai);
+
+  if (!endDateStr || endDateStr === "-" || endDateStr === startDateStr) {
+    return startFormatted;
+  }
+
+  const endFormatted = formatDateDayMonthYear(endDateStr, isThai);
+  if (startFormatted === endFormatted) {
+    return startFormatted;
+  }
+
+  return `${startFormatted} - ${endFormatted}`;
+};
+
+/**
+ * Calculates inclusive days between two date strings:
+ * e.g. 2026-10-01 to 2026-10-02 = 2 days
+ */
+export const calculateDaysBetween = (
+  startDateStr?: string | null,
+  endDateStr?: string | null,
+): number => {
+  const startParts = parseDateParts(startDateStr);
+  if (!startParts) return 1;
+
+  if (!endDateStr || endDateStr === "-" || endDateStr === startDateStr) {
+    return 1;
+  }
+
+  const endParts = parseDateParts(endDateStr);
+  if (!endParts) return 1;
+
+  const startUtc = Date.UTC(startParts.year, startParts.month - 1, startParts.day);
+  const endUtc = Date.UTC(endParts.year, endParts.month - 1, endParts.day);
+  if (endUtc <= startUtc) return 1;
+
+  const diffDays = Math.round((endUtc - startUtc) / (1000 * 60 * 60 * 24)) + 1;
+  return Math.max(1, diffDays);
+};
+
+/**
+ * Formats duration with daily breakdown if training is 2 days or more:
+ * e.g. 2 days, 18 hrs:
+ * Thai: "วันละ 9 ชม. / รวม 18 ชม."
+ * English: "9 hrs/day · 18 hrs total"
+ * 1 day, 6 hrs:
+ * Thai: "6 ชม."
+ * English: "6 hrs"
+ */
+export const formatTrainingDuration = (
+  hours?: number | string | null,
+  startDateStr?: string | null,
+  endDateStr?: string | null,
+  isThai: boolean = true,
+): string => {
+  const numHours = typeof hours === "number" ? hours : parseFloat(String(hours || "0"));
+  const days = calculateDaysBetween(startDateStr, endDateStr);
+
+  const hourUnit = isThai ? "ชม." : "hrs";
+
+  if (isNaN(numHours) || numHours <= 0) {
+    return isThai ? "ยังไม่ระบุ" : "Not specified";
+  }
+
+  if (days > 1) {
+    const dailyHours = Math.round((numHours / days) * 10) / 10;
+    if (isThai) {
+      return `วันละ ${dailyHours} ${hourUnit} / รวม ${numHours} ${hourUnit}`;
+    }
+    return `${dailyHours} ${hourUnit}/day · ${numHours} ${hourUnit} total`;
+  }
+
+  return `${numHours} ${hourUnit}`;
+};
+

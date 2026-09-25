@@ -21,6 +21,7 @@ import {
   type IssuedCertificate,
 } from "../../../../lib/certificates/types";
 import { Check, X, Eye, Trash2 } from "../../../icons/LucideIcons";
+import { formatDateDayMonthYear } from "../../../../lib/calendarDate";
 import styles from "./TrainingRecord.module.css";
 
 /**
@@ -320,7 +321,7 @@ export default function CertificateUploadPanel({ planId }: { planId: string }) {
                       </td>
                       <td className={styles.certificateDateCell}>
                         {certificate ? (
-                          certificate.issuedAt.slice(0, 10)
+                          formatDateDayMonthYear(certificate.issuedAt, language === "th")
                         ) : (
                           <span className={styles.certificateDash}>—</span>
                         )}

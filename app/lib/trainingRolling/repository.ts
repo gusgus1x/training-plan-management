@@ -8,7 +8,7 @@ import { getPrismaClient } from "../database/prisma";
 import { removePlanCertificateDirectory } from "../certificates/storage";
 import { notifyEmployees } from "../notifications/notify";
 import { cascadeDeleteTrainingPlans } from "../trainingPlanCascade";
-import type { WorkflowCourse } from "../trainingWorkflow";
+import type { PlanTargetGroupSnapshot, WorkflowCourse } from "../trainingWorkflow";
 import type { CreateRollingPlanInput, RollingPlanListFilters, RollingPlanStatus, UpdateRollingPlanInput } from "./types";
 
 type DatabaseClient = Pick<PrismaClient, "training_plan" | "training_plan_oap">;
@@ -37,6 +37,7 @@ const courseInclude = {
   company: true,
   course_standard_course: {
     include: {
+      course_standard: true,
       course_standard_target_position: { include: { position: true } },
       course_standard_target_level: { include: { employee_level: true } },
       course_standard_target_company: { include: { company: true } },
@@ -48,30 +49,40 @@ type CourseWithRelations = Prisma.courseGetPayload<{ include: typeof courseInclu
 
 // Mirrors app/lib/trainingOap/repository.ts's course-row mapping (kept local rather than
 // shared to avoid coupling this module's queries to the trainingOap repository's include shape).
-const mapCourseSnapshot = (row: CourseWithRelations): WorkflowCourse => {
+const mapCourseSnapshot = (
+  row: CourseWithRelations,
+  targetSnapshot?: PlanTargetGroupSnapshot | null,
+  cleanObjective?: string | null,
+): WorkflowCourse => {
   const owner = row.company_id ? "FACTORY" : "CENTER";
   const ownerCompany = row.company?.company_code ?? "CENTER";
 
-  const targetPositions = row.course_standard_course?.flatMap((sc) =>
-    sc.course_standard_target_position.map((p) => p.position.position_name_en || p.position.position_name_th || p.position.position_code)
-  ) ?? [];
+  const targetPositions = targetSnapshot?.targetPositions?.length
+    ? targetSnapshot.targetPositions
+    : (row.course_standard_course?.flatMap((sc) =>
+        sc.course_standard_target_position.map((p) => p.position.position_name_en || p.position.position_name_th || p.position.position_code)
+      ) ?? []);
 
-  const targetLevels = row.course_standard_course?.flatMap((sc) =>
-    sc.course_standard_target_level.map((l) => l.employee_level.level_code || l.employee_level.level_code_en || l.employee_level.level_key)
-  ) ?? [];
+  const targetLevels = targetSnapshot?.targetLevels?.length
+    ? targetSnapshot.targetLevels
+    : (row.course_standard_course?.flatMap((sc) =>
+        sc.course_standard_target_level.map((l) => l.employee_level.level_code || l.employee_level.level_code_en || l.employee_level.level_key)
+      ) ?? []);
 
-  const targetCompanies = row.course_standard_course?.flatMap((sc) =>
-    sc.course_standard_target_company.map((c) => c.company.company_code)
-  ) ?? [];
+  const targetCompanies = targetSnapshot?.targetCompanies?.length
+    ? targetSnapshot.targetCompanies
+    : (row.course_standard_course?.flatMap((sc) =>
+        sc.course_standard_target_company.map((c) => c.company.company_code)
+      ) ?? []);
 
-  const result: WorkflowCourse = {
+  return {
     id: row.course_id.toString(),
     courseCode: row.course_code,
     courseNameTh: row.course_name,
     courseNameEn: row.course_name_en || "",
-    objective: row.objective || "",
+    objective: cleanObjective !== undefined && cleanObjective !== null ? cleanObjective : (row.objective || ""),
     learningContent: row.learning_content || "",
-    targetGroup: row.target_group || "",
+    targetGroup: targetSnapshot?.targetGroup || row.target_group || "",
     methodology: row.methodology || "",
     preTestId: row.pre_assessment_id?.toString() || "",
     preTest: row.assessment_course_pre_assessment_idToassessment?.assessment_series?.series_name || "",
@@ -94,19 +105,24 @@ const mapCourseSnapshot = (row: CourseWithRelations): WorkflowCourse => {
     owner,
     ownerCompany,
     createdBy: row.created_by?.toString() || "",
+    targetPositions,
+    targetLevels,
+    targetCompanies,
+    orgScope: targetSnapshot?.orgScope,
   };
-
-  (result as unknown as Record<string, unknown>).targetPositions = targetPositions;
-  (result as unknown as Record<string, unknown>).targetLevels = targetLevels;
-  (result as unknown as Record<string, unknown>).targetCompanies = targetCompanies;
-
-  return result;
 };
 
 const oapSummaryInclude = {
   course: { include: courseInclude },
   instructor: true,
   company: true,
+  organization_function: true,
+  division: true,
+  department: true,
+  section: true,
+  training_plan_oap_target_position: { include: { position: true } },
+  training_plan_oap_target_level: { include: { employee_level: true } },
+  training_plan_oap_target_company: { include: { company: true } },
 } satisfies Prisma.training_plan_oapInclude;
 
 type OapSummary = Prisma.training_plan_oapGetPayload<{ include: typeof oapSummaryInclude }>;
@@ -162,6 +178,60 @@ const mapRollingPlan = (row: RollingPlanWithRelations) => {
   const effectiveDbStatus =
     row.status === "COMPLETED" || hasExpenses || hasResults ? "COMPLETED" : row.status;
 
+  const hasDbTargets =
+    Boolean(oap?.training_plan_oap_target_position?.length) ||
+    Boolean(oap?.training_plan_oap_target_level?.length) ||
+    Boolean(oap?.training_plan_oap_target_company?.length) ||
+    Boolean(oap?.function_id) ||
+    Boolean(oap?.division_id) ||
+    Boolean(oap?.department_id) ||
+    Boolean(oap?.section_id) ||
+    Boolean(oap?.target_group_snapshot);
+
+  let targetPositions: string[] = [];
+  let targetLevels: string[] = [];
+  let targetCompanies: string[] = [];
+  let orgScope = {
+    functionName: oap?.organization_function?.function_name_th || oap?.organization_function?.function_name_en || "",
+    division: oap?.division?.division_name_th || oap?.division?.division_name_en || "",
+    department: oap?.department?.department_name_th || oap?.department?.department_name_en || "",
+    section: oap?.section?.section_name_th || oap?.section?.section_name_en || "",
+  };
+  let targetGroup = oap?.target_group_snapshot || oap?.course?.target_group || "";
+
+  if (hasDbTargets) {
+    targetPositions = (oap?.training_plan_oap_target_position || []).map(
+      (p) => p.position.position_name_en || p.position.position_name_th || p.position.position_code,
+    );
+    targetLevels = (oap?.training_plan_oap_target_level || []).map(
+      (l) => l.employee_level.level_code || l.employee_level.level_code_en || l.employee_level.level_key,
+    );
+    targetCompanies = (oap?.training_plan_oap_target_company || []).map((c) => c.company.company_code);
+  } else if (oap?.course) {
+    const planYear = oap.plan_year;
+    const stdCourses = oap.course.course_standard_course || [];
+    const matchedSc =
+      (planYear ? stdCourses.find((sc) => sc.course_standard?.standard_year === planYear) : undefined) ??
+      stdCourses[0];
+    if (matchedSc) {
+      targetPositions = (matchedSc.course_standard_target_position || []).map(
+        (p) => p.position.position_name_en || p.position.position_name_th || p.position.position_code,
+      );
+      targetLevels = (matchedSc.course_standard_target_level || []).map(
+        (l) => l.employee_level.level_code || l.employee_level.level_code_en || l.employee_level.level_key,
+      );
+      targetCompanies = (matchedSc.course_standard_target_company || []).map((c) => c.company.company_code);
+    }
+  }
+
+  const targetSnapshot: PlanTargetGroupSnapshot = {
+    targetGroup,
+    targetPositions,
+    targetLevels,
+    targetCompanies,
+    orgScope,
+  };
+
   return {
     id: row.plan_id.toString(),
     oapPlanId: row.oap_plan_id.toString(),
@@ -179,7 +249,9 @@ const mapRollingPlan = (row: RollingPlanWithRelations) => {
     dbStatus: effectiveDbStatus,
     createdBy: row.created_by?.toString() || "",
     updatedAt: (row.updated_at || row.created_at || new Date()).toISOString(),
-    course: oap?.course ? mapCourseSnapshot(oap.course) : null,
+    targetSnapshot,
+    course: oap?.course ? mapCourseSnapshot(oap.course, targetSnapshot, oap.course_description_snapshot || oap.course.objective) : null,
+
     oapParticipants: oap?.default_participant_count?.toString() || "0",
     oapHours: oap?.planned_duration_hours?.toString() || "0",
     oapBudget: oap?.total_planned_budget?.toString() || "0",

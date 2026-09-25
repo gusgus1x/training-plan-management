@@ -25,6 +25,7 @@ import { useUiLanguage } from "../../../ThaiUiLocalization";
 import SearchableSelect from "../../../SearchableSelect";
 import { FileSpreadsheet, Lock, Upload, Users } from "../../../icons/LucideIcons";
 import { loadWorkflowRollingPlans, type RollingPlan } from "../../TrainingPlanManagement/modules/TrainingRolling";
+import { formatDateRangeDayMonthYear } from "../../../../lib/calendarDate";
 import results from "./EvaluationResultsPage.module.css";
 import styles from "./EvaluationConverter.module.css";
 
@@ -568,7 +569,7 @@ export default function EvaluationConverter() {
                 ...plans.map((plan) => ({
                   value: plan.rollingId,
                   label: `[${plan.course.code}] ${plan.course.name}`,
-                  secondaryLabel: `${plan.trainingDate.slice(0, 10)}${plan.batch ? ` · ${t("รุ่น", "Batch")} ${plan.batch}` : ""}`,
+                  secondaryLabel: `${formatDateRangeDayMonthYear(plan.trainingDate, plan.endDate, language === "th")}${plan.batch ? ` · ${t("รุ่น", "Batch")} ${plan.batch}` : ""}`,
                 })),
               ]}
             />

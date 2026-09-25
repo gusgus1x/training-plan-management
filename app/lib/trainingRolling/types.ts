@@ -34,6 +34,7 @@ export type RollingPlanRecord = {
   oapProvider: string;
   owner: WorkflowOwner;
   ownerCompany: string;
+  targetSnapshot?: import("../trainingWorkflow").PlanTargetGroupSnapshot;
   /** This batch's own form choices. Empty string means "use the course's", which is what almost
    *  every batch holds - `course` above still carries the course-level default to fall back to. */
   formOverrides: RollingPlanFormOverrides;

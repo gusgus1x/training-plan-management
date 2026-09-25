@@ -6,6 +6,7 @@ import { listCourses } from "../../lib/courses/client";
 import {
   getCourseDisplayName,
   getCourseSecondaryName,
+  type PlanTargetGroupSnapshot,
   type WorkflowCourse,
   type WorkflowStandard,
 } from "../../lib/trainingWorkflow";
@@ -25,6 +26,7 @@ import { loadWorkflowRollingPlans, type RollingPlan } from "../center_factory/Tr
 import { useUiLanguage } from "../ThaiUiLocalization";
 import ModuleHeader from "./ModuleHeader";
 import SearchableApproverSelect from "./SearchableApproverSelect";
+import { formatDateDayMonthYear } from "../../lib/calendarDate";
 import styles from "./RoadmapModule.module.css";
 import {
   User,
@@ -534,9 +536,11 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
 
       const courseObj = rp.course as unknown as Record<string, unknown> | undefined;
       const masterObj = masterCourse as unknown as Record<string, unknown> | undefined;
+      const targetSnapshot = (rp as unknown as { targetSnapshot?: PlanTargetGroupSnapshot }).targetSnapshot;
 
       const rawPositions =
-        (Array.isArray(courseObj?.targetPositions) && courseObj.targetPositions.length > 0 ? courseObj.targetPositions : undefined)
+        (Array.isArray(targetSnapshot?.targetPositions) && targetSnapshot.targetPositions.length > 0 ? targetSnapshot.targetPositions : undefined)
+        || (Array.isArray(courseObj?.targetPositions) && courseObj.targetPositions.length > 0 ? courseObj.targetPositions : undefined)
         || (Array.isArray(courseObj?.target_positions) && courseObj.target_positions.length > 0 ? courseObj.target_positions : undefined)
         || (Array.isArray(masterObj?.targetPositions) && masterObj.targetPositions.length > 0 ? masterObj.targetPositions : undefined)
         || (Array.isArray(masterObj?.target_positions) && masterObj.target_positions.length > 0 ? masterObj.target_positions : undefined)
@@ -544,7 +548,8 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
         || [];
 
       const rawLevels =
-        (Array.isArray(courseObj?.targetLevels) && courseObj.targetLevels.length > 0 ? courseObj.targetLevels : undefined)
+        (Array.isArray(targetSnapshot?.targetLevels) && targetSnapshot.targetLevels.length > 0 ? targetSnapshot.targetLevels : undefined)
+        || (Array.isArray(courseObj?.targetLevels) && courseObj.targetLevels.length > 0 ? courseObj.targetLevels : undefined)
         || (Array.isArray(courseObj?.target_levels) && courseObj.target_levels.length > 0 ? courseObj.target_levels : undefined)
         || (Array.isArray(masterObj?.targetLevels) && masterObj.targetLevels.length > 0 ? masterObj.targetLevels : undefined)
         || (Array.isArray(masterObj?.target_levels) && masterObj.target_levels.length > 0 ? masterObj.target_levels : undefined)
@@ -552,7 +557,8 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
         || [];
 
       const rawCompanies =
-        (Array.isArray(courseObj?.targetCompanies) && courseObj.targetCompanies.length > 0 ? courseObj.targetCompanies : undefined)
+        (Array.isArray(targetSnapshot?.targetCompanies) && targetSnapshot.targetCompanies.length > 0 ? targetSnapshot.targetCompanies : undefined)
+        || (Array.isArray(courseObj?.targetCompanies) && courseObj.targetCompanies.length > 0 ? courseObj.targetCompanies : undefined)
         || (Array.isArray(courseObj?.target_companies) && courseObj.target_companies.length > 0 ? courseObj.target_companies : undefined)
         || (Array.isArray(masterObj?.targetCompanies) && masterObj.targetCompanies.length > 0 ? masterObj.targetCompanies : undefined)
         || (Array.isArray(masterObj?.target_companies) && masterObj.target_companies.length > 0 ? masterObj.target_companies : undefined)
@@ -575,6 +581,9 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
         ? t("เสร็จสิ้นการอบรมแล้ว", "Training ended")
         : t("เปิดรับสมัคร", "Open registration");
 
+      const targetFunctionFromSnapshot = targetSnapshot?.orgScope?.functionName || (courseObj?.orgScope as { functionName?: string } | undefined)?.functionName;
+      const targetFunctions = targetFunctionFromSnapshot ? [targetFunctionFromSnapshot] : (std?.functionName ? [std.functionName] : ["All Function"]);
+
       itemMap.set(code, {
         id: rp.rollingId,
         code,
@@ -587,9 +596,9 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
         courseType: rp.course.courseType || masterCourse?.courseType || notSpecified,
         ownerCompany: isCenter ? "CENTER" : ownerComp,
         courseOwner: isCenter ? "CENTER" : "FACTORY",
-        targetGroupDesc: rp.course.targetGroup || masterCourse?.targetGroup || t("พนักงานระดับบังคับบัญชาและระดับปฏิบัติการที่เกี่ยวข้อง", "Targeted Employees & Related Groups"),
+        targetGroupDesc: targetSnapshot?.targetGroup || rp.course.targetGroup || masterCourse?.targetGroup || t("พนักงานระดับบังคับบัญชาและระดับปฏิบัติการที่เกี่ยวข้อง", "Targeted Employees & Related Groups"),
         targetCompanies: (rawCompanies.length > 0) ? rawCompanies : (isCenter ? ["All Companies"] : [ownerComp]),
-        targetFunctions: std?.functionName ? [std.functionName] : ["All Function"],
+        targetFunctions,
         targetPositions: (rawPositions.length > 0) ? rawPositions : ["All Positions"],
         targetLevels: (rawLevels.length > 0) ? rawLevels : ["All Levels"],
         round: rp.batch || "-",
@@ -954,7 +963,7 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
                     📚 {item.plan.courseName} ({item.plan.courseCode})
                   </div>
                   <div style={{ fontSize: "0.78rem", color: "var(--ui-30-muted)", marginTop: 2 }}>
-                    📅 {item.plan.startAt ? item.plan.startAt.slice(0, 10) : "-"}
+                    📅 {item.plan.startAt ? formatDateDayMonthYear(item.plan.startAt, isThai) : "-"}
                   </div>
                 </div>
                 <div className={styles.pendingItemActions}>

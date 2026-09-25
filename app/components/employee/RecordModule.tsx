@@ -21,6 +21,10 @@ import { useToast } from "../ToastHost";
 import { useUiLanguage } from "../ThaiUiLocalization";
 import { toEnglishPositionName } from "../../lib/employeeMasterData";
 import {
+  formatDateDayMonthYear,
+  formatDateRangeDayMonthYear,
+} from "../../lib/calendarDate";
+import {
   createRecordRequest,
   decideRecordRequest,
   listRecordRequests,
@@ -431,12 +435,7 @@ const AssessmentFlowSection = ({
 
 const providers = ["all", "HRD Center", "Factory HRD"] as const;
 
-const formatDate = (value: string) =>
-  new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(`${value}T00:00:00`));
+const formatDate = (value: string) => formatDateDayMonthYear(value, true);
 
 const escapeCell = (value: string | number | null) =>
   String(value ?? "-")
@@ -1248,7 +1247,7 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
                       <span className={styles.infoBarLabel}>{t("วันที่อบรม", "Training Date")}</span>
                       <span className={styles.infoBarValue}>
                         <Calendar size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-                        {enrollment.plan.startAt.slice(0, 10)}
+                        {formatDateRangeDayMonthYear(enrollment.plan.startAt, enrollment.plan.endAt, isThai)}
                       </span>
                     </div>
                     <div className={styles.infoBarItem}>

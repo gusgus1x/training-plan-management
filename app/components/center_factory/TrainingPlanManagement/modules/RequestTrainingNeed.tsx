@@ -25,6 +25,7 @@ import type {
   NeedRequestStage,
   NeedRequestStatus,
 } from "../../../../lib/trainingNeedRequests/types";
+import { formatDateDayMonthYear } from "../../../../lib/calendarDate";
 import {
   Inbox,
   Factory,
@@ -56,7 +57,7 @@ export const requestTrainingNeedModule = {
     "Review Course Needed and Request Reason submitted from the employee training request page.",
 } as const;
 
-const formatDate = (iso: string) => iso.slice(0, 10);
+const formatDate = (iso: string) => formatDateDayMonthYear(iso, true);
 
 /**
  * The two parts of the per-request list layout, kept switchable because the user is still choosing:

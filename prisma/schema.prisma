@@ -220,6 +220,7 @@ model company {
   evaluation_form                evaluation_form[]
   training_need_request          training_need_request[]
   training_plan_oap              training_plan_oap[]
+  training_plan_oap_target_company training_plan_oap_target_company[]
   training_record_request        training_record_request[]
   user_account                   user_account[]
 }
@@ -460,6 +461,7 @@ model division {
   company_division_mapping company_division_mapping[]
   course_standard_course   course_standard_course[]
   employee                 employee[]
+  training_plan_oap        training_plan_oap[]
 }
 
 model department {
@@ -471,6 +473,7 @@ model department {
   company_department_mapping company_department_mapping[]
   course_standard_course     course_standard_course[]
   employee                   employee[]
+  training_plan_oap          training_plan_oap[]
 }
 
 model section {
@@ -482,6 +485,7 @@ model section {
   company_section_mapping company_section_mapping[]
   course_standard_course  course_standard_course[]
   employee                employee[]
+  training_plan_oap       training_plan_oap[]
 }
 
 model employee_level {
@@ -495,9 +499,10 @@ model employee_level {
   level_code_en                String                         @db.NVarChar(30)
   level_key                    String                         @unique(map: "UQ_employee_level_level_key") @db.NVarChar(30)
   remark                       String?                        @db.NVarChar(500)
-  course_standard_target_level course_standard_target_level[]
-  employee                     employee[]
-  training_enrollment          training_enrollment[]
+  course_standard_target_level     course_standard_target_level[]
+  employee                         employee[]
+  training_enrollment              training_enrollment[]
+  training_plan_oap_target_level   training_plan_oap_target_level[]
 }
 
 model evaluation_answer {
@@ -656,6 +661,7 @@ model organization_function {
   course_standard_course   course_standard_course[]
   employee                 employee[]
   training_need_request    training_need_request[]
+  training_plan_oap        training_plan_oap[]
   training_record_request  training_record_request[]
 }
 
@@ -666,9 +672,10 @@ model position {
   position_name_en                String?                           @db.NVarChar(255)
   status                          String                            @default("N'ACTIVE'", map: "DF_position_status") @db.NVarChar(20)
   remark                          String?                           @db.NVarChar(500)
-  course_standard_target_position course_standard_target_position[]
-  employee                        employee[]
-  training_enrollment             training_enrollment[]
+  course_standard_target_position   course_standard_target_position[]
+  employee                          employee[]
+  training_enrollment               training_enrollment[]
+  training_plan_oap_target_position training_plan_oap_target_position[]
 }
 
 model role {
@@ -902,6 +909,11 @@ model training_plan_oap {
   budget_accommodation                                        Decimal?            @db.Decimal(14, 2)
   budget_material                                             Decimal?            @db.Decimal(14, 2)
   budget_food_beverage                                        Decimal?            @db.Decimal(14, 2)
+  function_id                                                 BigInt?
+  division_id                                                 BigInt?
+  department_id                                               BigInt?
+  section_id                                                  BigInt?
+  target_group_snapshot                                       String?             @db.NVarChar(500)
   training_plan                                               training_plan[]
   institute_provider                                          institute_provider? @relation(fields: [provider_id], references: [institute_provider_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_training_plan_oap_institute_provider_provider_id")
   company                                                     company?            @relation(fields: [company_id], references: [company_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_V6F039_training_plan_oap_company_id")
@@ -912,6 +924,13 @@ model training_plan_oap {
   assessment_training_plan_oap_post_assessment_idToassessment assessment?         @relation("training_plan_oap_post_assessment_idToassessment", fields: [post_assessment_id], references: [assessment_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_V6F044_training_plan_oap_post_assessment_id")
   assessment_training_plan_oap_pre_assessment_idToassessment  assessment?         @relation("training_plan_oap_pre_assessment_idToassessment", fields: [pre_assessment_id], references: [assessment_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_V6F045_training_plan_oap_pre_assessment_id")
   user_account_training_plan_oap_updated_byTouser_account     user_account?       @relation("training_plan_oap_updated_byTouser_account", fields: [updated_by], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_V6F046_training_plan_oap_updated_by")
+  department                                                  department?         @relation(fields: [department_id], references: [department_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_training_plan_oap_department_id")
+  division                                                    division?           @relation(fields: [division_id], references: [division_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_training_plan_oap_division_id")
+  organization_function                                       organization_function? @relation(fields: [function_id], references: [function_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_training_plan_oap_function_id")
+  section                                                     section?            @relation(fields: [section_id], references: [section_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_training_plan_oap_section_id")
+  training_plan_oap_target_company                            training_plan_oap_target_company[]
+  training_plan_oap_target_level                              training_plan_oap_target_level[]
+  training_plan_oap_target_position                           training_plan_oap_target_position[]
 
   @@index([provider_id], map: "IX_training_plan_oap_provider_id")
 }
@@ -1143,3 +1162,34 @@ model audit_log {
   @@index([occurred_at(sort: Desc)], map: "IX_audit_log_occurred_at")
   @@index([retain_until], map: "IX_audit_log_retain_until")
 }
+
+model training_plan_oap_target_position {
+  target_position_id BigInt            @id(map: "PK_training_plan_oap_target_position") @default(autoincrement())
+  oap_plan_id        BigInt
+  position_id        BigInt
+  position           position          @relation(fields: [position_id], references: [position_id], onUpdate: NoAction, map: "FK_training_plan_oap_target_position_position_id")
+  training_plan_oap  training_plan_oap @relation(fields: [oap_plan_id], references: [oap_plan_id], onDelete: Cascade, onUpdate: NoAction, map: "FK_training_plan_oap_target_position_oap_plan_id")
+
+  @@unique([oap_plan_id, position_id], map: "UQ_oap_plan_target_position")
+}
+
+model training_plan_oap_target_level {
+  target_level_id   BigInt            @id(map: "PK_training_plan_oap_target_level") @default(autoincrement())
+  oap_plan_id       BigInt
+  level_id          BigInt
+  employee_level    employee_level    @relation(fields: [level_id], references: [level_id], onUpdate: NoAction, map: "FK_training_plan_oap_target_level_level_id")
+  training_plan_oap training_plan_oap @relation(fields: [oap_plan_id], references: [oap_plan_id], onDelete: Cascade, onUpdate: NoAction, map: "FK_training_plan_oap_target_level_oap_plan_id")
+
+  @@unique([oap_plan_id, level_id], map: "UQ_oap_plan_target_level")
+}
+
+model training_plan_oap_target_company {
+  target_company_id BigInt            @id(map: "PK_training_plan_oap_target_company") @default(autoincrement())
+  oap_plan_id       BigInt
+  company_id        BigInt
+  company           company           @relation(fields: [company_id], references: [company_id], onUpdate: NoAction, map: "FK_training_plan_oap_target_company_company_id")
+  training_plan_oap training_plan_oap @relation(fields: [oap_plan_id], references: [oap_plan_id], onDelete: Cascade, onUpdate: NoAction, map: "FK_training_plan_oap_target_company_oap_plan_id")
+
+  @@unique([oap_plan_id, company_id], map: "UQ_oap_plan_target_company")
+}
+

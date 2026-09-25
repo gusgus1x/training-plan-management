@@ -41,6 +41,7 @@ import {
 import { gradeSubmission, listPendingGrading, publishSubmissionResults, readEvaluationSummary } from "../../../../lib/trainingForms/client";
 import type { PendingGradingSubmission } from "../../../../lib/trainingForms/types";
 import type { CostBreakdown } from "../../../../lib/trainingRecord/types";
+import { formatDateDayMonthYear } from "../../../../lib/calendarDate";
 import styles from "./TrainingRecord.module.css";
 import actualStyles from "./TrainingActual.module.css";
 import {
@@ -652,9 +653,10 @@ export default function TrainingActual() {
     evaluationAfter30Day: emptyEnrollmentStage,
   };
   const { language } = useUiLanguage();
+  const isThai = language === "th";
   /** Both strings at the call site rather than a dictionary key: this screen is read beside the
    *  Thai paperwork it records, and a key would put the wording a file away from its use. */
-  const t = (th: string, en: string) => (language === "th" ? th : en);
+  const t = (th: string, en: string) => (isThai ? th : en);
   const [courses, setCourses] = useState<ActualCourse[]>([]);
   const [courseOwnerFilter, setCourseOwnerFilter] = useState<CourseOwnerFilter>(() => loadSelection().owner);
   const [selectedCourseGroupId, setSelectedCourseGroupId] = useState(() => loadSelection().groupId);
@@ -1579,8 +1581,8 @@ export default function TrainingActual() {
               {availableSessions.map((session) => (
                 <option key={session.id} value={session.id}>
                   {t(
-                    `${t("รุ่นที่", "Batch")} ${session.batch ?? "1"} / ${t("วันที่", "Date")} ${session.date} (${session.time}) / ${t("ห้อง", "Room")} ${session.room}`,
-                    `Batch ${session.batch ?? "1"} / ${session.date} (${session.time}) / room ${session.room}`,
+                    `${t("รุ่นที่", "Batch")} ${session.batch ?? "1"} / ${t("วันที่", "Date")} ${formatDateDayMonthYear(session.date, isThai)} (${session.time}) / ${t("ห้อง", "Room")} ${session.room}`,
+                    `Batch ${session.batch ?? "1"} / ${formatDateDayMonthYear(session.date, false)} (${session.time}) / room ${session.room}`,
                   )}
                 </option>
               ))}
@@ -1630,7 +1632,7 @@ export default function TrainingActual() {
                   </span>
                   <span className={actualStyles.courseMetaChip}>
                     <Calendar size={13} />
-                    <span>{t("วันที่", "Date")}: <strong>{selectedCourse.date}</strong> ({selectedCourse.time})</span>
+                    <span>{t("วันที่", "Date")}: <strong>{formatDateDayMonthYear(selectedCourse.date, isThai)}</strong> ({selectedCourse.time})</span>
                   </span>
                   <span className={actualStyles.courseMetaChip}>
                     <MapPin size={13} />

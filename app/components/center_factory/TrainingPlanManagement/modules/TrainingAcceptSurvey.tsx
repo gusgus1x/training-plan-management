@@ -30,7 +30,7 @@ import type { EmployeeRecord } from "../../../../lib/employees/types";
 import { createEnrollment, EnrollmentApiError, getCourseEnrollmentHistory, listEnrollments, updateEnrollmentStatus } from "../../../../lib/trainingEnrollment/client";
 import type { CoursePriorHistoryRecord, EnrollmentRecord, EnrollmentSource, EnrollmentStatus } from "../../../../lib/trainingEnrollment/types";
 import { listPositions } from "../../../../lib/positions/client";
-import { getCurrentCalendarDate } from "../../../../lib/calendarDate";
+import { getCurrentCalendarDate, formatDateDayMonthYear } from "../../../../lib/calendarDate";
 import {
   Circle,
   Check,
@@ -3077,7 +3077,7 @@ export default function TrainingAcceptSurvey({
             <div className={styles.sharePresetContainer}>
               <label><MessageSquare size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> ตัวอย่างข้อความสำเร็จรูปสำหรับส่งต่อ (LINE / Email Preset):</label>
               <div className={styles.presetMessageBox}>
-                {`[ประกาศ] ขอเรียนเชิญหัวหน้างาน / Section Head เสนอชื่อพนักงานเข้าอบรม\nวิชา: ${selectedCourse.title}\nวันที่อบรม: ${selectedCourse.date || "ตามกำหนดการ"}\nลิ้งก์เสนอชื่อพนักงาน: ${typeof window !== "undefined" ? window.location.origin : ""}/training-plan/training-accept-survey?courseId=${selectedCourse.id}`}
+                {`[ประกาศ] ขอเรียนเชิญหัวหน้างาน / Section Head เสนอชื่อพนักงานเข้าอบรม\nวิชา: ${selectedCourse.title}\nวันที่อบรม: ${selectedCourse.date ? formatDateDayMonthYear(selectedCourse.date, true) : "ตามกำหนดการ"}\nลิ้งก์เสนอชื่อพนักงาน: ${typeof window !== "undefined" ? window.location.origin : ""}/training-plan/training-accept-survey?courseId=${selectedCourse.id}`}
               </div>
             </div>
 
@@ -3086,7 +3086,7 @@ export default function TrainingAcceptSurvey({
                 className={styles.copyPresetBtn}
                 type="button"
                 onClick={async () => {
-                  const msg = `[ประกาศ] ขอเรียนเชิญหัวหน้างาน / Section Head เสนอชื่อพนักงานเข้าอบรม\nวิชา: ${selectedCourse.title}\nวันที่อบรม: ${selectedCourse.date || "ตามกำหนดการ"}\nลิ้งก์เสนอชื่อพนักงาน: ${window.location.origin}/training-plan/training-accept-survey?courseId=${selectedCourse.id}`;
+                  const msg = `[ประกาศ] ขอเรียนเชิญหัวหน้างาน / Section Head เสนอชื่อพนักงานเข้าอบรม\nวิชา: ${selectedCourse.title}\nวันที่อบรม: ${selectedCourse.date ? formatDateDayMonthYear(selectedCourse.date, true) : "ตามกำหนดการ"}\nลิ้งก์เสนอชื่อพนักงาน: ${window.location.origin}/training-plan/training-accept-survey?courseId=${selectedCourse.id}`;
                   await copyTextToClipboard(msg);
                   setCopiedPresetSuccess(true);
                   setTimeout(() => setCopiedPresetSuccess(false), 2000);

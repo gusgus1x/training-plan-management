@@ -29,7 +29,12 @@ import type { UserModule } from "./data";
 import ModuleHeader from "./ModuleHeader";
 import NominateEmployeesDialog from "./NominateEmployeesDialog";
 import SearchableApproverSelect from "./SearchableApproverSelect";
-import { getLocalDateString } from "../../lib/calendarDate";
+import {
+  getLocalDateString,
+  formatDateDayMonthYear,
+  formatDateRangeDayMonthYear,
+  formatTrainingDuration,
+} from "../../lib/calendarDate";
 import styles from "./RegisterTrainingModule.module.css";
 import {
   Globe,
@@ -463,29 +468,39 @@ export default function RegisterTrainingModule({
             })
             .filter((p) => !p.isCompleted);
 
-          const stdCompanies = standard?.companies;
-          const targetCompanies = (stdCompanies && stdCompanies.length > 0)
-            ? stdCompanies
-            : ((plan.relatedCompanies && plan.relatedCompanies.length > 0)
-              ? plan.relatedCompanies
-              : (plan.owner === "CENTER" ? ["All Companies"] : [ownerCompany]));
-
+          const snapshot = (plan as unknown as { targetSnapshot?: { targetPositions?: string[]; targetLevels?: string[]; targetCompanies?: string[] } }).targetSnapshot;
           const rawPositions = (plan.course as unknown as Record<string, unknown>)?.targetPositions as string[] | undefined;
           const rawLevels = (plan.course as unknown as Record<string, unknown>)?.targetLevels as string[] | undefined;
+          const rawCompanies = (plan.course as unknown as Record<string, unknown>)?.targetCompanies as string[] | undefined;
+          const stdCompanies = standard?.companies;
 
-          // Extract exact positions from matched standard or course master
-          const targetPositions = (standard?.positions && standard.positions.length > 0)
-            ? standard.positions
+          const targetCompanies = (snapshot?.targetCompanies && snapshot.targetCompanies.length > 0)
+            ? snapshot.targetCompanies
+            : ((rawCompanies && rawCompanies.length > 0)
+              ? rawCompanies
+              : ((stdCompanies && stdCompanies.length > 0)
+                ? stdCompanies
+                : ((plan.relatedCompanies && plan.relatedCompanies.length > 0)
+                  ? plan.relatedCompanies
+                  : (plan.owner === "CENTER" ? ["All Companies"] : [ownerCompany]))));
+
+          // Extract exact positions from plan snapshot first, then course/standard fallback
+          const targetPositions = (snapshot?.targetPositions && snapshot.targetPositions.length > 0)
+            ? snapshot.targetPositions
             : ((rawPositions && rawPositions.length > 0)
               ? rawPositions
-              : [t("ทุกตำแหน่ง", "All Positions")]);
+              : ((standard?.positions && standard.positions.length > 0)
+                ? standard.positions
+                : [t("ทุกตำแหน่ง", "All Positions")]));
 
-          // Extract exact levels from matched standard or course master
-          const targetLevels = (standard?.levels && standard.levels.length > 0)
-            ? standard.levels
+          // Extract exact levels from plan snapshot first, then course/standard fallback
+          const targetLevels = (snapshot?.targetLevels && snapshot.targetLevels.length > 0)
+            ? snapshot.targetLevels
             : ((rawLevels && rawLevels.length > 0)
               ? rawLevels
-              : [t("ทุกระดับ", "All Levels")]);
+              : ((standard?.levels && standard.levels.length > 0)
+                ? standard.levels
+                : [t("ทุกระดับ", "All Levels")]));
 
           const targetGroupDesc = plan.course.targetGroup || t("พนักงานระดับบังคับบัญชาและระดับปฏิบัติการที่เกี่ยวข้อง", "Targeted Employees & Related Groups");
 
@@ -549,7 +564,7 @@ export default function RegisterTrainingModule({
             objective: plan.course.objective || "-",
             learningContent: plan.course.learningContent || "-",
             methodology: plan.course.methodology || "-",
-            date: plan.endDate && plan.endDate !== plan.trainingDate ? `${plan.trainingDate} - ${plan.endDate}` : plan.trainingDate,
+            date: formatDateRangeDayMonthYear(plan.trainingDate, plan.endDate, isThai),
             endDate: plan.endDate || plan.trainingDate,
             monthKey,
             time: `${plan.startTime} - ${plan.endTime}`,
@@ -558,7 +573,7 @@ export default function RegisterTrainingModule({
             status: statusLabel,
             round: plan.batch || "-",
             type: plan.course.courseType || "-",
-            duration: `${plan.hours} ${t("ชม.", "hrs")}`,
+            duration: formatTrainingDuration(plan.hours, plan.trainingDate, plan.endDate, isThai),
             trainingStatus: isRegistered ? "Registered" : "Not registered",
             trainer: plan.trainer || "-",
             provider: plan.provider || "-",
@@ -805,7 +820,7 @@ export default function RegisterTrainingModule({
                     📚 {item.plan.courseName} ({item.plan.courseCode})
                   </div>
                   <div style={{ fontSize: "0.78rem", color: "var(--ui-30-muted)", marginTop: 2 }}>
-                    📅 {item.plan.startAt ? item.plan.startAt.slice(0, 10) : "-"}
+                    📅 {item.plan.startAt ? formatDateDayMonthYear(item.plan.startAt, isThai) : "-"}
                   </div>
                 </div>
                 <div className={styles.pendingItemActions}>

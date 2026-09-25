@@ -25,6 +25,7 @@ import {
 } from "../../TrainingPlanManagement/modules/TrainingRolling";
 import TypewriterLoader from "../../../TypewriterLoader";
 import { UNDER_DEVELOPMENT } from "../../../../lib/underDevelopment";
+import { formatDateDayMonthYear } from "../../../../lib/calendarDate";
 import {
   Download,
   X,
@@ -1398,7 +1399,7 @@ export default function TrainingRecord() {
                   <div className={styles.metaMiniIcon}><Calendar size={18} /></div>
                   <div>
                     <span>{isThai ? "วันที่ & เวลาอบรม" : "Date & Time"}</span>
-                    <strong>{selectedCourse.date || "-"} ({selectedCourse.time || "09:00 - 16:00"})</strong>
+                    <strong>{selectedCourse.date ? formatDateDayMonthYear(selectedCourse.date, isThai) : "-"} ({selectedCourse.time || "09:00 - 16:00"})</strong>
                   </div>
                 </div>
                 <div className={styles.metaMiniCard}>

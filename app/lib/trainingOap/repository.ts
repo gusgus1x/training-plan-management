@@ -6,17 +6,10 @@ import { getPrismaClient } from "../database/prisma";
 import { removePlanCertificateDirectory } from "../certificates/storage";
 import { cascadeDeleteTrainingPlans } from "../trainingPlanCascade";
 import { ApiError } from "../api/errors";
-import type { WorkflowCourse } from "../trainingWorkflow";
+import type { PlanTargetGroupSnapshot, WorkflowCourse } from "../trainingWorkflow";
 import type { CreateOapPlanInput, OapPlanListFilters, OapPlanStatus, UpdateOapPlanInput } from "./types";
 
 type DatabaseClient = Pick<PrismaClient, "training_plan_oap" | "course">;
-
-// course.objective is NVARCHAR(Max) but course_description_snapshot is NVARCHAR(1000), so a course
-// with a long objective could not have an OAP plan created for it at all — the insert failed with a
-// truncation error naming neither the course nor the field. Truncating is right here: this is a
-// snapshot for display, not the record of what the course says.
-const snapshotDescription = (objective: string | null) =>
-  objective === null ? null : objective.slice(0, 1000);
 
 const safeBigInt = (val: string | null | undefined): bigint | null => {
   if (!val) return null;
@@ -39,9 +32,115 @@ const courseInclude = {
 
 type CourseWithRelations = Prisma.courseGetPayload<{ include: typeof courseInclude }>;
 
-// Mirrors app/lib/courses/repository.ts's course-row mapping (kept local rather than
-// shared to avoid coupling this module's queries to the courses repository's include shape).
-const mapCourseSnapshot = (row: CourseWithRelations): WorkflowCourse => {
+type CourseWithStandardRelations = CourseWithRelations & {
+  course_standard_course?: Array<{
+    function_id?: bigint | null;
+    division_id?: bigint | null;
+    department_id?: bigint | null;
+    section_id?: bigint | null;
+    course_standard?: { standard_year: number } | null;
+    organization_function?: { function_name: string; function_name_en: string | null } | null;
+    division?: { division_name: string; division_name_en: string | null } | null;
+    department?: { department_name: string; department_name_en: string | null } | null;
+    section?: { section_name: string; section_name_en: string | null } | null;
+    course_standard_target_position: Array<{ position_id: bigint; position: { position_name_en: string | null; position_name_th: string | null; position_code: string } }>;
+    course_standard_target_level: Array<{ level_id: bigint; employee_level: { level_code: string | null; level_code_en: string | null; level_key: string } }>;
+    course_standard_target_company: Array<{ company_id: bigint; company: { company_code: string } }>;
+  }>;
+};
+
+type ExtractedCourseTargets = {
+  targetGroup: string;
+  targetPositions: string[];
+  targetLevels: string[];
+  targetCompanies: string[];
+  positionIds: bigint[];
+  levelIds: bigint[];
+  companyIds: bigint[];
+  functionId: bigint | null;
+  divisionId: bigint | null;
+  departmentId: bigint | null;
+  sectionId: bigint | null;
+  orgScope: {
+    functionName: string;
+    division: string;
+    department: string;
+    section: string;
+  };
+};
+
+const extractCourseTargets = (
+  course: CourseWithStandardRelations,
+  planYear?: number,
+): ExtractedCourseTargets => {
+  const stdCourses = course.course_standard_course || [];
+  const matchedSc =
+    (planYear ? stdCourses.find((sc) => sc.course_standard?.standard_year === planYear) : undefined) ??
+    stdCourses[0];
+
+  if (!matchedSc) {
+    return {
+      targetGroup: course.target_group || "",
+      targetPositions: [],
+      targetLevels: [],
+      targetCompanies: [],
+      positionIds: [],
+      levelIds: [],
+      companyIds: [],
+      functionId: null,
+      divisionId: null,
+      departmentId: null,
+      sectionId: null,
+      orgScope: {
+        functionName: "",
+        division: "",
+        department: "",
+        section: "",
+      },
+    };
+  }
+
+  const targetPositions = (matchedSc.course_standard_target_position || []).map(
+    (p) => p.position.position_name_en || p.position.position_name_th || p.position.position_code,
+  );
+  const positionIds = (matchedSc.course_standard_target_position || []).map((p) => p.position_id);
+
+  const targetLevels = (matchedSc.course_standard_target_level || []).map(
+    (l) => l.employee_level.level_code || l.employee_level.level_code_en || l.employee_level.level_key,
+  );
+  const levelIds = (matchedSc.course_standard_target_level || []).map((l) => l.level_id);
+
+  const targetCompanies = (matchedSc.course_standard_target_company || []).map((c) => c.company.company_code);
+  const companyIds = (matchedSc.course_standard_target_company || []).map((c) => c.company_id);
+
+  const orgScope = {
+    functionName: matchedSc.organization_function?.function_name || matchedSc.organization_function?.function_name_en || "",
+    division: matchedSc.division?.division_name || matchedSc.division?.division_name_en || "",
+    department: matchedSc.department?.department_name || matchedSc.department?.department_name_en || "",
+    section: matchedSc.section?.section_name || matchedSc.section?.section_name_en || "",
+  };
+
+  return {
+    targetGroup: course.target_group || "",
+    targetPositions,
+    targetLevels,
+    targetCompanies,
+    positionIds,
+    levelIds,
+    companyIds,
+    functionId: matchedSc.function_id ?? null,
+    divisionId: matchedSc.division_id ?? null,
+    departmentId: matchedSc.department_id ?? null,
+    sectionId: matchedSc.section_id ?? null,
+    orgScope,
+  };
+};
+
+const mapCourseSnapshot = (
+  row: CourseWithRelations,
+  targetSnapshot?: PlanTargetGroupSnapshot | null,
+  cleanObjective?: string | null,
+): WorkflowCourse => {
   const owner = row.company_id ? "FACTORY" : "CENTER";
   const ownerCompany = row.company?.company_code ?? "CENTER";
   return {
@@ -49,9 +148,9 @@ const mapCourseSnapshot = (row: CourseWithRelations): WorkflowCourse => {
     courseCode: row.course_code,
     courseNameTh: row.course_name,
     courseNameEn: row.course_name_en || "",
-    objective: row.objective || "",
+    objective: cleanObjective !== undefined && cleanObjective !== null ? cleanObjective : (row.objective || ""),
     learningContent: row.learning_content || "",
-    targetGroup: row.target_group || "",
+    targetGroup: targetSnapshot?.targetGroup || row.target_group || "",
     methodology: row.methodology || "",
     preTestId: row.pre_assessment_id?.toString() || "",
     preTest: row.assessment_course_pre_assessment_idToassessment?.assessment_series?.series_name || "",
@@ -74,6 +173,10 @@ const mapCourseSnapshot = (row: CourseWithRelations): WorkflowCourse => {
     owner,
     ownerCompany,
     createdBy: row.created_by.toString(),
+    targetPositions: targetSnapshot?.targetPositions ?? [],
+    targetLevels: targetSnapshot?.targetLevels ?? [],
+    targetCompanies: targetSnapshot?.targetCompanies ?? [],
+    orgScope: targetSnapshot?.orgScope,
   };
 };
 
@@ -82,6 +185,19 @@ const oapInclude = {
   instructor: true,
   institute_provider: true,
   company: true,
+  organization_function: true,
+  division: true,
+  department: true,
+  section: true,
+  training_plan_oap_target_position: {
+    include: { position: true },
+  },
+  training_plan_oap_target_level: {
+    include: { employee_level: true },
+  },
+  training_plan_oap_target_company: {
+    include: { company: true },
+  },
 } satisfies Prisma.training_plan_oapInclude;
 
 type OapPlanWithRelations = Prisma.training_plan_oapGetPayload<{ include: typeof oapInclude }>;
@@ -104,11 +220,59 @@ const mapOapPlan = (row: OapPlanWithRelations, sequence: number) => {
   const instructorName = row.instructor
     ? [row.instructor.title, row.instructor.first_name, row.instructor.last_name].filter(Boolean).join(" ").trim()
     : "";
+
+  const hasDbTargets =
+    (row.training_plan_oap_target_position?.length ?? 0) > 0 ||
+    (row.training_plan_oap_target_level?.length ?? 0) > 0 ||
+    (row.training_plan_oap_target_company?.length ?? 0) > 0 ||
+    Boolean(row.function_id) ||
+    Boolean(row.division_id) ||
+    Boolean(row.department_id) ||
+    Boolean(row.section_id) ||
+    Boolean(row.target_group_snapshot);
+
+  let targetPositions: string[] = [];
+  let targetLevels: string[] = [];
+  let targetCompanies: string[] = [];
+  let orgScope = {
+    functionName: row.organization_function?.function_name_th || row.organization_function?.function_name_en || "",
+    division: row.division?.division_name_th || row.division?.division_name_en || "",
+    department: row.department?.department_name_th || row.department?.department_name_en || "",
+    section: row.section?.section_name_th || row.section?.section_name_en || "",
+  };
+  let targetGroup = row.target_group_snapshot || row.course.target_group || "";
+
+  if (hasDbTargets) {
+    targetPositions = (row.training_plan_oap_target_position || []).map(
+      (p) => p.position.position_name_en || p.position.position_name_th || p.position.position_code,
+    );
+    targetLevels = (row.training_plan_oap_target_level || []).map(
+      (l) => l.employee_level.level_code || l.employee_level.level_code_en || l.employee_level.level_key,
+    );
+    targetCompanies = (row.training_plan_oap_target_company || []).map((c) => c.company.company_code);
+  } else {
+    const fallback = extractCourseTargets(row.course as CourseWithStandardRelations, row.plan_year);
+    targetPositions = fallback.targetPositions;
+    targetLevels = fallback.targetLevels;
+    targetCompanies = fallback.targetCompanies;
+    targetGroup = fallback.targetGroup;
+    orgScope = fallback.orgScope;
+  }
+
+  const targetSnapshot: PlanTargetGroupSnapshot = {
+    targetGroup,
+    targetPositions,
+    targetLevels,
+    targetCompanies,
+    orgScope,
+  };
+
   return {
     id: row.oap_plan_id.toString(),
     sequence,
     planYear: row.plan_year,
-    course: mapCourseSnapshot(row.course),
+    targetSnapshot,
+    course: mapCourseSnapshot(row.course, targetSnapshot, row.course_description_snapshot || row.course.objective),
     participants: row.default_participant_count.toString(),
     hours: row.planned_duration_hours.toString(),
     budget: row.total_planned_budget.toString(),
@@ -203,9 +367,25 @@ export const createOapPlanRepository = (client?: DatabaseClient) => {
         const courseId = safeBigInt(input.courseId);
         if (!courseId) throw new Error("INVALID_COURSE_ID");
 
+        const courseIncludeWithStandards = {
+          ...courseInclude,
+          course_standard_course: {
+            include: {
+              course_standard: true,
+              organization_function: true,
+              division: true,
+              department: true,
+              section: true,
+              course_standard_target_position: { include: { position: true } },
+              course_standard_target_level: { include: { employee_level: true } },
+              course_standard_target_company: { include: { company: true } },
+            },
+          },
+        };
+
         const course = await db().course.findUniqueOrThrow({
           where: { course_id: courseId },
-          include: courseInclude,
+          include: courseIncludeWithStandards,
         });
 
         // Ensure the selected course belongs to the same factory company
@@ -238,6 +418,8 @@ let oapCode = baseCode;
         const cleanBudgetPart = (value: string | undefined) =>
           value !== undefined ? String(value).replace(/,/g, "").trim() || "0" : null;
 
+        const targets = extractCourseTargets(course as CourseWithStandardRelations, input.planYear);
+
         const created = await db().training_plan_oap.create({
           data: {
             oap_code: oapCode,
@@ -245,7 +427,21 @@ let oapCode = baseCode;
             plan_year: input.planYear,
             course_id: courseId,
             course_name_snapshot: course.course_name,
-            course_description_snapshot: snapshotDescription(course.objective),
+            course_description_snapshot: course.objective || course.description || null,
+            function_id: targets.functionId,
+            division_id: targets.divisionId,
+            department_id: targets.departmentId,
+            section_id: targets.sectionId,
+            target_group_snapshot: targets.targetGroup || null,
+            training_plan_oap_target_position: targets.positionIds.length > 0 ? {
+              create: targets.positionIds.map((pid) => ({ position_id: pid })),
+            } : undefined,
+            training_plan_oap_target_level: targets.levelIds.length > 0 ? {
+              create: targets.levelIds.map((lid) => ({ level_id: lid })),
+            } : undefined,
+            training_plan_oap_target_company: targets.companyIds.length > 0 ? {
+              create: targets.companyIds.map((cid) => ({ company_id: cid })),
+            } : undefined,
             pre_assessment_id: course.pre_assessment_id,
             post_assessment_id: course.post_assessment_id,
             evaluation_form_id: course.evaluation_form_id,
@@ -287,29 +483,85 @@ let oapCode = baseCode;
         if (input.courseId !== undefined) {
           const courseId = safeBigInt(input.courseId);
           if (!courseId) throw new Error("INVALID_COURSE_ID");
+          const courseIncludeWithStandards = {
+            ...courseInclude,
+            course_standard_course: {
+              include: {
+                course_standard: true,
+                organization_function: true,
+                division: true,
+                department: true,
+                section: true,
+                course_standard_target_position: { include: { position: true } },
+                course_standard_target_level: { include: { employee_level: true } },
+                course_standard_target_company: { include: { company: true } },
+              },
+            },
+          };
           const course = await db().course.findUniqueOrThrow({
             where: { course_id: courseId },
-            include: courseInclude,
+            include: courseIncludeWithStandards,
           });
-        // Ensure the selected course belongs to the same company as the OAP plan (or is center-owned)
-        const existingPlan = await db().training_plan_oap.findUniqueOrThrow({
-          where: { oap_plan_id: BigInt(id) },
-          select: { company_id: true },
-        });
-        if (existingPlan.company_id && course.company_id !== null && course.company_id.toString() !== existingPlan.company_id.toString()) {
-          throw new ApiError({
-            code: "FORBIDDEN",
-            message: "Company users can only select their own or Center courses for OAP plans.",
-            status: 403,
+          // Ensure the selected course belongs to the same company as the OAP plan (or is center-owned)
+          const existingPlan = await db().training_plan_oap.findUniqueOrThrow({
+            where: { oap_plan_id: BigInt(id) },
+            select: { company_id: true, plan_year: true, course_id: true },
           });
-        }
+          if (existingPlan.company_id && course.company_id !== null && course.company_id.toString() !== existingPlan.company_id.toString()) {
+            throw new ApiError({
+              code: "FORBIDDEN",
+              message: "Company users can only select their own or Center courses for OAP plans.",
+              status: 403,
+            });
+          }
+
           data.course_id = courseId;
           data.course_name_snapshot = course.course_name;
-          data.course_description_snapshot = snapshotDescription(course.objective);
+          data.course_description_snapshot = course.objective || course.description || null;
           data.pre_assessment_id = course.pre_assessment_id;
           data.post_assessment_id = course.post_assessment_id;
           data.evaluation_form_id = course.evaluation_form_id;
+
+          if (courseId !== existingPlan.course_id) {
+            const targets = extractCourseTargets(
+              course as CourseWithStandardRelations,
+              input.planYear ?? existingPlan.plan_year,
+            );
+            data.function_id = targets.functionId;
+            data.division_id = targets.divisionId;
+            data.department_id = targets.departmentId;
+            data.section_id = targets.sectionId;
+            data.target_group_snapshot = targets.targetGroup || null;
+
+            await db().$transaction([
+              db().training_plan_oap_target_position.deleteMany({ where: { oap_plan_id: BigInt(id) } }),
+              db().training_plan_oap_target_level.deleteMany({ where: { oap_plan_id: BigInt(id) } }),
+              db().training_plan_oap_target_company.deleteMany({ where: { oap_plan_id: BigInt(id) } }),
+              ...(targets.positionIds.length > 0
+                ? [
+                    db().training_plan_oap_target_position.createMany({
+                      data: targets.positionIds.map((pid) => ({ oap_plan_id: BigInt(id), position_id: pid })),
+                    }),
+                  ]
+                : []),
+              ...(targets.levelIds.length > 0
+                ? [
+                    db().training_plan_oap_target_level.createMany({
+                      data: targets.levelIds.map((lid) => ({ oap_plan_id: BigInt(id), level_id: lid })),
+                    }),
+                  ]
+                : []),
+              ...(targets.companyIds.length > 0
+                ? [
+                    db().training_plan_oap_target_company.createMany({
+                      data: targets.companyIds.map((cid) => ({ oap_plan_id: BigInt(id), company_id: cid })),
+                    }),
+                  ]
+                : []),
+            ]);
+          }
         }
+
         if (input.planYear !== undefined) data.plan_year = input.planYear;
         if (input.hours !== undefined) data.planned_duration_hours = input.hours;
         if (input.participants !== undefined) data.default_participant_count = input.participants;

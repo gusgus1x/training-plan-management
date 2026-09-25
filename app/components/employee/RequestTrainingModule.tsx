@@ -22,6 +22,7 @@ import { useToast } from "../ToastHost";
 import { useUiLanguage } from "../ThaiUiLocalization";
 import ModuleHeader from "./ModuleHeader";
 import SearchableSelect from "../SearchableSelect";
+import { formatDateDayMonthYear } from "../../lib/calendarDate";
 import shell from "../shared/ModuleShell.module.css";
 import styles from "./RequestTrainingModule.module.css";
 import {
@@ -267,7 +268,7 @@ export default function RequestTrainingModule({
     }
   };
 
-  const formatDate = (iso: string) => new Date(iso).toLocaleDateString(language === "th" ? "th-TH" : "en-GB");
+  const formatDate = (iso: string) => formatDateDayMonthYear(iso, language === "th");
 
   return (
     <section className={shell.moduleWorkspace}>

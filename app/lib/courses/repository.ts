@@ -358,11 +358,21 @@ export const createCourseRepository = (client?: DatabaseClient) => {
           });
 
           if (!standard) {
+            let candidateCode = input.standardCode;
+            const codeClash = await tx.course_standard.findUnique({
+              where: { standard_code: candidateCode },
+              select: { standard_id: true },
+            });
+            if (codeClash) {
+              const compSuffix = companyId ? `C${companyId}` : "CTR";
+              candidateCode = `STD-${input.standardYear}-${compSuffix}-${Date.now().toString(36).toUpperCase()}`;
+            }
+
             standard = await tx.course_standard.create({
               data: {
                 company_id: companyId ? safeBigInt(companyId) : null,
                 standard_year: input.standardYear,
-                standard_code: input.standardCode,
+                standard_code: candidateCode,
                 standard_name: input.standardName,
                 status: "ACTIVE",
                 created_by: safeBigInt(userId) ?? BigInt(0),
@@ -558,10 +568,20 @@ export const createCourseRepository = (client?: DatabaseClient) => {
           if (existingStdCourses.length > 0) {
             const standardId = existingStdCourses[0].standard_id;
             const standardData: any = { updated_by: safeBigInt(userId) ?? BigInt(0), updated_at: new Date() };
-            if (input.standardCode !== undefined) standardData.standard_code = input.standardCode;
-            if (input.standardName !== undefined) standardData.standard_name = input.standardName;
             if (input.status !== undefined) standardData.status = input.status.toUpperCase();
             if (input.standardYear !== undefined) standardData.standard_year = input.standardYear;
+
+            // Preserve existing standard_code; do not overwrite with synthetic group-based codes (e.g. STD-2026-G9)
+            // which causes UniqueConstraintViolation on UX_RC2_course_standard_standard_code
+            if (input.standardCode !== undefined) {
+              const currentStd = await tx.course_standard.findUnique({
+                where: { standard_id: standardId },
+                select: { standard_code: true },
+              });
+              if (!currentStd?.standard_code) {
+                standardData.standard_code = input.standardCode;
+              }
+            }
 
             await tx.course_standard.update({
               where: { standard_id: standardId },

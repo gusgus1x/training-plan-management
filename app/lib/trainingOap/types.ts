@@ -24,6 +24,7 @@ export type OapPlanRecord = {
   status: OapPlanStatus;
   owner: WorkflowOwner;
   ownerCompany: string;
+  targetSnapshot?: import("../trainingWorkflow").PlanTargetGroupSnapshot;
 };
 
 export type CreateOapPlanInput = {
