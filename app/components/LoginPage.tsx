@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState, type FormEvent } from "react";
+import { useState, useSyncExternalStore, type FormEvent } from "react";
 import ataLogo from "../photo/LOGO ATTG/ATA.png";
 import atfbLogo from "../photo/LOGO ATTG/ATFB.png";
 import logoImage from "../photo/logo.png";
@@ -18,6 +18,11 @@ import Navbar from "./Navbar";
 import styles from "./LoginPage.module.css";
 import type { ClientRoleCode } from "../lib/auth/client";
 import { useUiLanguage } from "./ThaiUiLocalization";
+import {
+  noLastLoginCompanySubscription,
+  readLastLoginCompany,
+  rememberLastLoginCompany,
+} from "../lib/auth/lastLoginCompany";
 import { UNDER_DEVELOPMENT } from "../lib/underDevelopment";
 
 import LoginActivitiesWidget from "./LoginActivitiesWidget/LoginActivitiesWidget";
@@ -105,7 +110,11 @@ export default function LoginPage({
   const isThai = language === "th";
   const t = (th: string, en: string) => (isThai ? th : en);
 
-  const [selectedCompany, setSelectedCompany] = useState<PreviewCompanyCode | null>(null);
+  // The remembered company is read through useSyncExternalStore so the server render and hydration
+  // both see null and the logo lights up right after. `undefined` = nothing picked on this visit yet.
+  const rememberedCompany = useSyncExternalStore(noLastLoginCompanySubscription, readLastLoginCompany, () => null);
+  const [pickedCompany, setSelectedCompany] = useState<PreviewCompanyCode | null | undefined>(undefined);
+  const selectedCompany = pickedCompany === undefined ? rememberedCompany : pickedCompany;
   const [employeeDigits, setEmployeeDigits] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -170,6 +179,8 @@ export default function LoginPage({
 
     try {
       await onLogin(finalUsername, password);
+      // A general (Admin/HQ) sign-in clears the remembered company.
+      rememberLastLoginCompany(selectedCompany);
     } catch {
       setErrorMessage(
         selectedCompany
@@ -360,12 +371,12 @@ export default function LoginPage({
                   className={styles.clearSelectedCompanyBtn}
                   onClick={handleResetCompany}
                   title={t("สลับเป็นเข้าสู่ระบบทั่วไป", "Switch to General Login")}
+                  aria-label={t("สลับเป็นเข้าสู่ระบบทั่วไป (Admin/HQ)", "Switch to General Login (Admin/HQ)")}
                 >
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     <line x1="18" y1="6" x2="6" y2="18" />
                     <line x1="6" y1="6" x2="18" y2="18" />
                   </svg>
-                  <span>{t("ล็อกอินทั่วไป (Admin/HQ)", "General Login (Admin/HQ)")}</span>
                 </button>
               </div>
             )}
