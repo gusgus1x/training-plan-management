@@ -19,6 +19,7 @@ import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserCo
 import { useUiLanguage } from "../../../ThaiUiLocalization";
 import { listEnrollments } from "../../../../lib/trainingEnrollment/client";
 import { ACTIVE_ENROLLMENT_STATUSES, type EnrollmentRecord } from "../../../../lib/trainingEnrollment/types";
+import { useNotice } from "../../../NoticeDialog";
 import TypewriterLoader from "../../../TypewriterLoader";
 import CourseOutlineButton from "../../../CourseOutlineButton";
 import styles from "./ScheduleCalendar.module.css";
@@ -384,6 +385,7 @@ export default function ScheduleCalendar({
   const user = useAuthenticatedUser();
   const router = useRouter();
   const { language: uiLang } = useUiLanguage();
+  const notice = useNotice();
   const [calendarToday] = useState(getCurrentCalendarDate);
   const [selectedYear, setSelectedYear] = useState(() => initialYear || calendarToday.year);
   const [selectedMonth, setSelectedMonth] = useState<"all" | string>(() => initialMonth || "all");
@@ -582,44 +584,49 @@ export default function ScheduleCalendar({
       : `${selectedYear}-${selectedMonth}-${String(new Date(Number(selectedYear), Number(selectedMonth), 0).getDate()).padStart(2, "0")}`;
   const emailSendDate = todayDate;
 
-  const handleExportExcel = () => {
-    const headers = ["Month", "Date", "Course Code", "Course Name", "Time", "Company"];
-    const escapeHtml = (value: string) =>
-      value
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;");
-    const rows = exportPlans
-      .map((plan) =>
-        [plan.month, plan.date, plan.courseCode, plan.courseName, plan.time, plan.company]
-          .map((cell) => `<td>${escapeHtml(cell)}</td>`)
-          .join(""),
-      )
-      .map((row) => `<tr>${row}</tr>`)
-      .join("");
-    const table = `
-      <html>
-        <head><meta charset="utf-8" /></head>
-        <body>
-          <table>
-            <thead><tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr></thead>
-            <tbody>${rows}</tbody>
-          </table>
-        </body>
-      </html>
-    `;
-    const blob = new Blob([table], {
-      type: "application/vnd.ms-excel;charset=utf-8;",
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `training-schedule-${selectedYear}-${selectedMonth === "all" ? "all-year" : selectedMonth}.xls`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
+  // The page lays each month out with buildCalendarWeeks (the same bars and slots as on screen)
+  // and the server only draws that layout into a month-per-sheet workbook.
+  const handleExportExcel = async () => {
+    const months = displayedMonths.map((month) => ({
+      month: Number(month.value),
+      weeks: buildCalendarWeeks(selectedYear, month.value, month.plans).map((week) => ({
+        days: week.days.map((day) => ({ dayNumber: day.dayNumber, isCurrentMonth: day.isCurrentMonth })),
+        segments: week.eventSegments.map((segment) => ({
+          startCol: segment.startCol,
+          span: segment.span,
+          slot: segment.slot,
+          courseName: segment.plan.course.name,
+          companyKey: getPlanCompanyKey(segment.plan),
+          continuesFromPrev: segment.isContinuationFromPrev,
+          continuesToNext: segment.continuesToNext,
+        })),
+      })),
+    }));
+
+    try {
+      const response = await fetch("/api/schedule-calendar/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ year: Number(selectedYear), months, rows: exportPlans }),
+      });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(body?.error || `HTTP ${response.status}`);
+      }
+      const url = URL.createObjectURL(await response.blob());
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `training-schedule-${selectedYear}-${selectedMonth === "all" ? "all-year" : selectedMonth}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      await notice({
+        title: uiLang === "th" ? "ส่งออก Excel ไม่สำเร็จ" : "Export failed",
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
   };
 
   const handleShowCurrentMonth = () => {
