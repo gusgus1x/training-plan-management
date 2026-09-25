@@ -1,7 +1,9 @@
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
-import { createProtectedRoute } from "../../../lib/auth/guard";
+import { ApiError } from "../../../lib/api/errors";
+import { createProtectedRoute, type ProtectedRouteOptions } from "../../../lib/auth/guard";
+import { isSectionHeadOrAbove } from "../../../lib/employeeMasterData";
 import {
   getCourseOutlineFileName,
   type CourseOutlineRequest,
@@ -32,7 +34,11 @@ const buildContentDisposition = (fileName: string) => {
 
 // Reads a template off disk and builds a workbook per request, so it stays behind the same guard
 // as every other route: an unauthenticated caller could otherwise spin these up at will.
-export const POST = createProtectedRoute(async (request) => {
+export const createCourseOutlineHandler = (auth?: ProtectedRouteOptions) => createProtectedRoute(async (request, principal) => {
+  // HRD always; an employee only from Section Head up (the calendar and Register offer it to them).
+  if (!isSectionHeadOrAbove(principal)) {
+    throw new ApiError({ code: "FORBIDDEN", message: "Course Outline is for Section Head and above", status: 403 });
+  }
   try {
     const { course, standard, oapPlan, schedule, budget } =
       (await request.json()) as CourseOutlineRequest;
@@ -74,4 +80,6 @@ export const POST = createProtectedRoute(async (request) => {
       { status: 500 },
     );
   }
-}, { allowedRoles: ["HRD_CENTER", "HRD_FACTORY"] });
+}, { ...auth, allowedRoles: ["HRD_CENTER", "HRD_FACTORY", "EMPLOYEE"] });
+
+export const POST = createCourseOutlineHandler();

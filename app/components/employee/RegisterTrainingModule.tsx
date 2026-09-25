@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRealtime } from "../useRealtime";
+import CourseOutlineButton from "../CourseOutlineButton";
 import { createPortal } from "react-dom";
 import { listCourses } from "../../lib/courses/client";
 import {
@@ -1044,6 +1045,11 @@ export default function RegisterTrainingModule({
                   >
                     {isExpanded ? t("ซ่อนรายละเอียด", "Hide detail") : t("รายละเอียดกลุ่มเป้าหมาย", "Target Group Details")}
                   </button>
+                  {(() => {
+                    // Section Head and above only; the button hides itself for everyone else.
+                    const plan = rollingPlans.find((item) => item.rollingId === course.rollingId);
+                    return plan ? <CourseOutlineButton plan={plan} className={styles.detailBtn} /> : null;
+                  })()}
                   {canNominate && !isEnded ? (
                     <button className={styles.nominateBtn} type="button" onClick={() => setNominatingCourse(course)}>
                       {t("ส่งพนักงานเข้าอบรม", "Send employees")}

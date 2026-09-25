@@ -863,6 +863,106 @@ const resolveRollingPlanStandard = (plan: RollingPlan, standards: WorkflowStanda
   return null;
 };
 
+/**
+ * Builds and downloads one batch's Course Outline; returns the course code. The OAP plan is
+ * optional: the outline only reads its trainer, provider, hours and budget, which the batch carries
+ * too, so pages whose users cannot list OAP plans (calendar, Register) can offer the same file.
+ * The server decides who may have it.
+ */
+export const downloadRollingCourseOutline = async (
+  plan: RollingPlan,
+  standards: WorkflowStandard[],
+  oapPlan?: OapPlanRecord | null,
+) => {
+  const course: WorkflowCourse = oapPlan?.course ?? {
+    id: plan.course.code,
+    courseCode: plan.course.code,
+    courseNameTh: plan.course.name,
+    courseNameEn: plan.course.name,
+    objective: plan.course.objective,
+    learningContent: plan.course.learningContent,
+    targetGroup: plan.course.targetGroup,
+    methodology: plan.course.methodology,
+    preTest: plan.course.preTest,
+    postTest: plan.course.postTest,
+    evaluation: plan.course.evaluation,
+    evaluationAfter30Day: plan.course.evaluationAfter30Day,
+    preTestLink: plan.course.preTestLink,
+    postTestLink: plan.course.postTestLink,
+    evaluationLink: plan.course.evaluationLink,
+    evaluationAfter30DayLink: plan.course.evaluationAfter30DayLink,
+    lifeCycleMonth: plan.course.lifeCycleMonth,
+    courseType: plan.course.courseType,
+    courseGroup: plan.course.courseGroup,
+    remark: plan.course.remark || "",
+    status: "Active",
+    updatedAt: plan.updatedAt,
+    owner: plan.owner,
+    ownerCompany: plan.ownerCompany,
+    createdBy: plan.ownerName,
+  };
+
+  const schedule = {
+    date: plan.trainingDate || "",
+    time: [plan.startTime, plan.endTime].filter(Boolean).join(" - ") || (plan.hours ? `${plan.hours} ชั่วโมง` : ""),
+    location: plan.location || "",
+  };
+
+  const budget = {
+    budgetInstructor: plan.budgetInstructor,
+    budgetTraveling: plan.budgetTraveling,
+    budgetSeminarRoom: plan.budgetSeminarRoom,
+    budgetAccommodation: plan.budgetAccommodation,
+    budgetMaterial: plan.budgetMaterial,
+    budgetFoodBeverage: plan.budgetFoodBeverage,
+    totalBudget: plan.budget,
+  };
+
+  const outlineOap = oapPlan ?? {
+    id: plan.oapId,
+    sequence: 0,
+    course,
+    participants: plan.participants,
+    hours: plan.hours,
+    budget: plan.budget,
+    trainer: plan.trainer,
+    provider: plan.provider,
+    createdBy: plan.ownerName,
+    status: "Planned" as const,
+    owner: plan.owner,
+    ownerCompany: plan.ownerCompany,
+  };
+
+  const response = await fetch("/api/course-master/course-outline", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      course,
+      standard: resolveRollingPlanStandard(plan, standards),
+      oapPlan: outlineOap,
+      schedule,
+      budget,
+    }),
+  });
+  if (!response.ok) {
+    const errorPayload = (await response.json().catch(() => null)) as { error?: string | { message?: string } } | null;
+    const error = errorPayload?.error;
+    throw new Error((typeof error === "string" ? error : error?.message) || "Unable to create Course Outline.");
+  }
+
+  const file = await response.blob();
+  const downloadUrl = URL.createObjectURL(file);
+  const downloadLink = document.createElement("a");
+  downloadLink.href = downloadUrl;
+  downloadLink.download = getCourseOutlineFileName(course, schedule);
+  document.body.appendChild(downloadLink);
+  downloadLink.click();
+  downloadLink.remove();
+  window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 0);
+  return course.courseCode;
+};
+
+
 const resolveRollingOapStandard = (oap: OapPlanRecord, standards: WorkflowStandard[]) => {
   const snapshot = (oap as unknown as { targetSnapshot?: PlanTargetGroupSnapshot }).targetSnapshot;
   const courseAny = oap.course as unknown as {
@@ -1632,82 +1732,11 @@ export default function TrainingRolling() {
   };
 
   const handleExportOutline = async (plan: RollingPlan) => {
-    const oapPlan = oapPlans.find((item) => item.id === plan.oapId) ?? null;
-    const course: WorkflowCourse = oapPlan?.course ?? {
-      id: plan.course.code,
-      courseCode: plan.course.code,
-      courseNameTh: plan.course.name,
-      courseNameEn: plan.course.name,
-      objective: plan.course.objective,
-      learningContent: plan.course.learningContent,
-      targetGroup: plan.course.targetGroup,
-      methodology: plan.course.methodology,
-      preTest: plan.course.preTest,
-      postTest: plan.course.postTest,
-      evaluation: plan.course.evaluation,
-      evaluationAfter30Day: plan.course.evaluationAfter30Day,
-      preTestLink: plan.course.preTestLink,
-      postTestLink: plan.course.postTestLink,
-      evaluationLink: plan.course.evaluationLink,
-      evaluationAfter30DayLink: plan.course.evaluationAfter30DayLink,
-      lifeCycleMonth: plan.course.lifeCycleMonth,
-      courseType: plan.course.courseType,
-      courseGroup: plan.course.courseGroup,
-      remark: plan.course.remark || "",
-      status: "Active",
-      updatedAt: plan.updatedAt,
-      owner: plan.owner,
-      ownerCompany: plan.ownerCompany,
-      createdBy: plan.ownerName,
-    };
-
-    const schedule = {
-      date: plan.trainingDate || "",
-      time: [plan.startTime, plan.endTime].filter(Boolean).join(" - ") || (plan.hours ? `${plan.hours} ชั่วโมง` : ""),
-      location: plan.location || "",
-    };
-
-    const budget = {
-      budgetInstructor: plan.budgetInstructor,
-      budgetTraveling: plan.budgetTraveling,
-      budgetSeminarRoom: plan.budgetSeminarRoom,
-      budgetAccommodation: plan.budgetAccommodation,
-      budgetMaterial: plan.budgetMaterial,
-      budgetFoodBeverage: plan.budgetFoodBeverage,
-      totalBudget: plan.budget,
-    };
-
     setExportingPlanId(plan.rollingId);
-
     try {
-      const response = await fetch("/api/course-master/course-outline", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          course,
-          standard: resolveRollingPlanStandard(plan, standards),
-          oapPlan,
-          schedule,
-          budget,
-        }),
-      });
-      const errorPayload = response.ok
-        ? null
-        : ((await response.json().catch(() => null)) as { error?: string } | null);
-      if (!response.ok) {
-        throw new Error(errorPayload?.error || "Unable to create Course Outline.");
-      }
-
-      const file = await response.blob();
-      const downloadUrl = URL.createObjectURL(file);
-      const downloadLink = document.createElement("a");
-      downloadLink.href = downloadUrl;
-      downloadLink.download = getCourseOutlineFileName(course, schedule);
-      document.body.appendChild(downloadLink);
-      downloadLink.click();
-      downloadLink.remove();
-      window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 0);
-      toast.success(`ดาวน์โหลด Course Outline ${course.courseCode} แล้ว / Course Outline exported`);
+      const oapPlan = oapPlans.find((item) => item.id === plan.oapId) ?? null;
+      const courseCode = await downloadRollingCourseOutline(plan, standards, oapPlan);
+      toast.success(`ดาวน์โหลด Course Outline ${courseCode} แล้ว / Course Outline exported`);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "ส่งออก Course Outline ไม่สำเร็จ / Unable to export Course Outline",

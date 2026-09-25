@@ -20,6 +20,7 @@ import { useUiLanguage } from "../../../ThaiUiLocalization";
 import { listEnrollments } from "../../../../lib/trainingEnrollment/client";
 import { ACTIVE_ENROLLMENT_STATUSES, type EnrollmentRecord } from "../../../../lib/trainingEnrollment/types";
 import TypewriterLoader from "../../../TypewriterLoader";
+import CourseOutlineButton from "../../../CourseOutlineButton";
 import styles from "./ScheduleCalendar.module.css";
 
 export const scheduleCalendarModule = {
@@ -1460,6 +1461,9 @@ export default function ScheduleCalendar({
                             <span>{uiLang === "th" ? "ส่งคนเข้าอบรม" : "Accept Survey"}</span>
                           </button>
                         )}
+
+                        {/* Section Head and above only; the button hides itself for everyone else. */}
+                        <CourseOutlineButton plan={plan} className={styles.toggleDetailBtn} />
 
                         <button
                           type="button"

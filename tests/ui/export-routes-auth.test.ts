@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
-import { describe, expect, it } from "vitest";
-import { POST as courseOutline } from "../../app/api/course-master/course-outline/route";
+import { describe, expect, it, vi } from "vitest";
+import { createCourseOutlineHandler, POST as courseOutline } from "../../app/api/course-master/course-outline/route";
+import type { AuthenticatedPrincipal } from "../../app/lib/auth/types";
 import { POST as attendanceSheet } from "../../app/api/training-accept-survey/attendance-sheet/route";
 
 /**
@@ -36,5 +37,53 @@ describe("Excel export routes require a session", () => {
     );
 
     expect(response.status).toBe(401);
+  });
+});
+
+const employee = (positionName: string): AuthenticatedPrincipal => ({
+  userId: "42",
+  username: "someone",
+  role: "EMPLOYEE",
+  employeeId: "7",
+  employeeUserId: "10000042",
+  companyId: "3",
+  email: null,
+  employeeCode: "1290-000042",
+  displayName: null,
+  companyCode: "ATA",
+  companyName: null,
+  functionCode: null,
+  functionName: null,
+  positionCode: null,
+  positionName,
+  levelCode: null,
+  levelName: null,
+  pl: null,
+});
+
+const asSignedIn = (user: AuthenticatedPrincipal) =>
+  createCourseOutlineHandler({
+    verifyToken: () => ({ version: 1, userId: user.userId, issuedAt: 100, lastSeenAt: 200, bootId: "test-boot-id" }),
+    revalidate: vi.fn().mockResolvedValue(user),
+    rollToken: () => "rolled-token",
+    production: false,
+  });
+
+describe("course outline is for Section Head and above", () => {
+  const signedPost = () =>
+    new NextRequest("http://localhost/api/course-master/course-outline", {
+      method: "POST",
+      body: JSON.stringify({}),
+      headers: { "content-type": "application/json", cookie: "tpm_session=valid-token" },
+    });
+
+  it("refuses an employee below Section Head", async () => {
+    const response = await asSignedIn(employee("Engineer"))(signedPost(), undefined as never);
+    expect(response.status).toBe(403);
+  });
+
+  it("lets a Section Head through to the export (an empty body then fails validation, not the guard)", async () => {
+    const response = await asSignedIn(employee("Section Head"))(signedPost(), undefined as never);
+    expect(response.status).toBe(400);
   });
 });
