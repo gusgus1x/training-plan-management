@@ -13,6 +13,7 @@ import {
   type WorkflowStandard,
 } from "../../../../lib/trainingWorkflow";
 import { listCourses, createCourse, updateCourse, deleteCourse } from "../../../../lib/courses/client";
+import { buildCourseCode } from "../../../../lib/courses/courseCode";
 import {
   collectTransitivePrerequisites,
   courseIdsThatWouldCycle,
@@ -1222,7 +1223,8 @@ function CourseMaster() {
       const code = c.courseCode || "";
       const parts = code.split("-");
       if (parts.length >= 2) {
-        const prefix = parts.length > 2 ? parts[parts.length - 2] : parts[0];
+        // Group is the 2nd segment of a company code (ATA-OT-000002, ATA-OT-000001-000002).
+        const prefix = parts.length > 2 ? parts[1] : parts[0];
         if (prefix) set.add(prefix.trim());
       }
     });
@@ -1339,11 +1341,12 @@ function CourseMaster() {
     const matchedGroup = courseGroupOptions.find((g) => g.name === courseGroup);
     if (matchedGroup && matchedGroup.code) {
       const nextSeq = findNextAvailableCourseSeq(courses, courseGroup, userCompanyCode, isFactoryUser);
-      if (isFactoryUser) {
-        nextCode = `${userCompanyCode}-${matchedGroup.code.trim()}-${String(nextSeq).padStart(6, "0")}`;
-      } else {
-        nextCode = `${matchedGroup.code.trim()}-${String(nextSeq).padStart(6, "0")}`;
-      }
+      nextCode = buildCourseCode({
+        groupCode: matchedGroup.code,
+        seq: nextSeq,
+        companyCode: isFactoryUser ? userCompanyCode : null,
+        centerCourseCode: templateCourse.courseCode,
+      });
     }
 
     let resolvedCourseType = templateCourse.courseType;
@@ -1824,11 +1827,15 @@ function CourseMaster() {
         nextCode = selectedCourse.courseCode;
       } else {
         const nextSeq = findNextAvailableCourseSeq(courses, courseGroup, userCompanyCode, isFactoryUser);
-        if (isFactoryUser) {
-          nextCode = `${userCompanyCode}-${matchedGroup.code.trim()}-${String(nextSeq).padStart(6, "0")}`;
-        } else {
-          nextCode = `${matchedGroup.code.trim()}-${String(nextSeq).padStart(6, "0")}`;
-        }
+        // The Center number stays in the preview only while the group still matches the template,
+        // the same rule the server applies.
+        const templateCourse = centerCoursesForTemplate.find((c) => c.id === selectedTemplateCourseId);
+        nextCode = buildCourseCode({
+          groupCode: matchedGroup.code,
+          seq: nextSeq,
+          companyCode: isFactoryUser ? userCompanyCode : null,
+          centerCourseCode: templateCourse?.courseGroup === courseGroup ? templateCourse.courseCode : null,
+        });
       }
     }
     setForm((current) => ({
@@ -2246,6 +2253,7 @@ function CourseMaster() {
       targetLevels: selectedLevels,
       standardYear,
       prerequisiteCourseIds: selectedPrerequisiteCourseIds,
+      copiedFromCenterCourseId: selectedTemplateCourseId || null,
     };
 
     const wasEditing = Boolean(selectedCourseId);

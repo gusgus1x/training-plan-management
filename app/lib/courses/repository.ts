@@ -6,6 +6,7 @@ import { withDatabaseErrorMapping } from "../database/errors";
 import { getPrismaClient } from "../database/prisma";
 import { removePlanCertificateDirectory } from "../certificates/storage";
 import { cascadeDeleteTrainingPlans } from "../trainingPlanCascade";
+import { buildCourseCode } from "./courseCode";
 import { wouldCreateCycle, type PrerequisiteGraph } from "./prerequisiteGraph";
 import type { CourseListFilters, CreateCourseInput, UpdateCourseInput } from "./types";
 import type { WorkflowCourse, WorkflowStandard } from "../trainingWorkflow";
@@ -66,11 +67,16 @@ export const findNextAvailableCourseCodeSeq = (courses: { course_code: string }[
 // HRD_FACTORY courses are prefixed with the creating company's code
 // ("<company>-<group>-<seq>") and numbered independently per company, also filling in
 // any vacant gap sequence numbers starting from 000001.
+//
+// A company course copied from a Center course in the same group also carries the Center
+// course's number ("<company>-<group>-<center seq>-<seq>"), so the code shows which Center
+// course it came from. Returns the link that is valid to store with the code, or null.
 const generateCourseCode = async (
   tx: Prisma.TransactionClient,
   courseGroupId: bigint,
   companyId: bigint | null,
-) => {
+  copiedFromCenterCourseId: bigint | null = null,
+): Promise<{ courseCode: string; copiedFromCenterCourseId: bigint | null }> => {
   const group = await tx.course_group.findUnique({
     where: { course_group_id: courseGroupId },
     select: { course_group_code: true, last_course_number: true },
@@ -90,7 +96,10 @@ const generateCourseCode = async (
       data: { last_course_number: Math.max(group.last_course_number ?? 0, nextSeq) },
     });
 
-    return `${group.course_group_code.trim()}-${String(nextSeq).padStart(6, "0")}`;
+    return {
+      courseCode: buildCourseCode({ groupCode: group.course_group_code, seq: nextSeq }),
+      copiedFromCenterCourseId: null,
+    };
   }
 
   const company = await tx.company.findUnique({
@@ -105,7 +114,29 @@ const generateCourseCode = async (
   });
   const nextCompanySeq = findNextAvailableCourseCodeSeq(companyCourses);
 
-  return `${company.company_code.trim()}-${group.course_group_code.trim()}-${String(nextCompanySeq).padStart(6, "0")}`;
+  // Only a Center course in the same group can be the source; anything else falls back to the
+  // plain company code. The link itself is kept even when the groups differ.
+  // ponytail: the Center seq is copied into the code once. If the Center course later changes
+  // group (and so its code), the company code keeps the old Center number; the
+  // copied_from_center_course_id column still points at the right course.
+  const centerCourse = copiedFromCenterCourseId
+    ? await tx.course.findUnique({
+        where: { course_id: copiedFromCenterCourseId },
+        select: { course_code: true, company_id: true, course_group_id: true },
+      })
+    : null;
+  const isCenterCourse = centerCourse !== null && centerCourse.company_id === null;
+
+  return {
+    courseCode: buildCourseCode({
+      groupCode: group.course_group_code,
+      seq: nextCompanySeq,
+      companyCode: company.company_code,
+      centerCourseCode:
+        isCenterCourse && centerCourse.course_group_id === courseGroupId ? centerCourse.course_code : null,
+    }),
+    copiedFromCenterCourseId: isCenterCourse ? copiedFromCenterCourseId : null,
+  };
 };
 
 export type CourseRepository = ReturnType<typeof createCourseRepository>;
@@ -300,13 +331,19 @@ export const createCourseRepository = (client?: DatabaseClient) => {
         return await db().$transaction(async (tx) => {
           // 1. Create course
           const courseGroupId = safeBigInt(input.courseGroupId) ?? BigInt(0);
-          const courseCode = await generateCourseCode(tx, courseGroupId, safeBigInt(companyId));
+          const { courseCode, copiedFromCenterCourseId } = await generateCourseCode(
+            tx,
+            courseGroupId,
+            safeBigInt(companyId),
+            safeBigInt(input.copiedFromCenterCourseId),
+          );
           const course = await tx.course.create({
             data: {
               company_id: companyId ? safeBigInt(companyId) : null,
               course_type_id: safeBigInt(input.courseTypeId) ?? BigInt(0),
               course_group_id: courseGroupId,
               course_code: courseCode,
+              copied_from_center_course_id: copiedFromCenterCourseId,
               course_name: input.courseNameTh,
               course_name_normalized: normalizeCourseName(input.courseNameTh),
               course_name_en: input.courseNameEn || null,
@@ -523,13 +560,15 @@ export const createCourseRepository = (client?: DatabaseClient) => {
             const newCourseGroupId = safeBigInt(input.courseGroupId) ?? BigInt(0);
             const current = await tx.course.findUniqueOrThrow({
               where: { course_id: BigInt(id) },
-              select: { course_group_id: true, company_id: true },
+              select: { course_group_id: true, company_id: true, copied_from_center_course_id: true },
             });
             if (newCourseGroupId !== current.course_group_id) {
               // Data Dictionary V6.2: changing a course's group requires a new system-generated
               // course_code; the old code is never reused.
               courseData.course_group_id = newCourseGroupId;
-              courseData.course_code = await generateCourseCode(tx, newCourseGroupId, current.company_id);
+              courseData.course_code = (
+                await generateCourseCode(tx, newCourseGroupId, current.company_id, current.copied_from_center_course_id)
+              ).courseCode;
             }
           }
 

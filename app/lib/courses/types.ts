@@ -27,6 +27,8 @@ export type CreateCourseInput = {
   status: "Active" | "Draft" | "Inactive";
   courseTypeId: string;
   courseGroupId: string;
+  /** Center course picked in "Copy details from Center Course template". Create only. */
+  copiedFromCenterCourseId?: string | null;
 
   standardCode: string;
   standardName: string;

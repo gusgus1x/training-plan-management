@@ -71,6 +71,7 @@ export const parseCreateCourse = (input: InputObject): CreateCourseInput => ({
   status: status(input.status, "Active"),
   courseTypeId: readRequiredString(input, "courseTypeId"),
   courseGroupId: readRequiredString(input, "courseGroupId"),
+  copiedFromCenterCourseId: readOptionalString(input, "copiedFromCenterCourseId"),
 
   standardCode: readRequiredString(input, "standardCode", { maxLength: 50 }),
   standardName: readRequiredString(input, "standardName", { maxLength: 255 }),

@@ -244,7 +244,7 @@ model course {
   company_id                                       BigInt?
   course_type_id                                   BigInt
   course_group_id                                  BigInt
-  course_code                                      String                   @unique(map: "UX_RC2_course_course_code") @db.VarChar(20)
+  course_code                                      String                   @unique(map: "UX_RC2_course_course_code") @db.VarChar(30)
   course_name                                      String                   @db.NVarChar(255)
   course_name_normalized                           String                   @unique(map: "UX_course_central_name_normalized", where: raw("([company_id] IS NULL)")) @db.NVarChar(255)
   description                                      String?
@@ -268,6 +268,12 @@ model course {
   post_test_link                                   String?                  @db.NVarChar(2048)
   evaluation_link                                  String?                  @db.NVarChar(2048)
   evaluation_after_30day_link                      String?                  @db.NVarChar(2048)
+  /// Center course (company_id IS NULL) this company course was copied from. See
+  /// prisma/migrations/48_Add_Course_Copied_From_Center_Course.sql. Hand-written relation names,
+  /// like course_prerequisite: a `prisma db pull` will rename them.
+  copied_from_center_course_id                     BigInt?
+  copied_from_center_course                        course?                  @relation("course_copied_from_center_course", fields: [copied_from_center_course_id], references: [course_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_course_copied_from_center_course_id")
+  company_copies                                   course[]                 @relation("course_copied_from_center_course")
   evaluation_form_after_30day                      evaluation_form?         @relation("CourseEvaluationFormAfter30Day", fields: [evaluation_form_after_30day_id], references: [evaluation_form_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_course_evaluation_form_after_30day_id")
   company                                          company?                 @relation(fields: [company_id], references: [company_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_V6F014_course_company_id")
   course_group                                     course_group             @relation(fields: [course_group_id], references: [course_group_id], onUpdate: NoAction, map: "FK_V6F015_course_course_group_id")
@@ -284,6 +290,7 @@ model course {
   required_by                                      course_prerequisite[]    @relation("course_prerequisite_required_by")
 
   @@unique([company_id, course_name_normalized], map: "UX_course_company_name_normalized", where: raw("([company_id] IS NOT NULL)"))
+  @@index([copied_from_center_course_id], map: "IX_course_copied_from_center_course_id")
 }
 
 /// Continuation courses: one row means course_id can only be registered for once
@@ -792,7 +799,7 @@ model training_need_request {
   planned_at               DateTime?
   review_note              String?
   course_id                BigInt?
-  course_code_snapshot     String?                @db.VarChar(20)
+  course_code_snapshot     String?                @db.VarChar(30)
   course_name_snapshot     String?                @db.NVarChar(255)
   employee_user_id         String                 @db.NVarChar(50)
   approver_user_id         String?                @db.NVarChar(50)

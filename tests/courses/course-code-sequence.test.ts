@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { findNextAvailableCourseCodeSeq } from "../../app/lib/courses/repository";
+import { buildCourseCode } from "../../app/lib/courses/courseCode";
 import { findNextAvailableCourseSeq, type CourseRecord } from "../../app/components/center_factory/TrainingCourseManagement/modules/CourseMasterWorkspace";
 
 describe("findNextAvailableCourseCodeSeq (Backend)", () => {
@@ -103,5 +104,35 @@ describe("findNextAvailableCourseSeq (Frontend Preview)", () => {
 
     // ATFB user should see next is 2 (gap between 1 and 5)
     expect(findNextAvailableCourseSeq(courses, "Maintenance", "ATFB", true)).toBe(2);
+  });
+});
+
+describe("course codes copied from a Center course", () => {
+  it("counts the company's own number (last segment) across plain and copied codes", () => {
+    const courses = [
+      { course_code: "ATA-OT-000001" },
+      { course_code: "ATA-OT-000003-000002" }, // copied from Center OT-000003, company number 2
+    ];
+    expect(findNextAvailableCourseCodeSeq(courses)).toBe(3);
+  });
+
+  it("gives a self-written course the next company number after a copied one", () => {
+    expect(findNextAvailableCourseCodeSeq([{ course_code: "ATA-OT-000001-000001" }])).toBe(2);
+  });
+
+  it("builds each code shape", () => {
+    expect(buildCourseCode({ groupCode: "OT", seq: 1 })).toBe("OT-000001");
+    expect(buildCourseCode({ groupCode: "OT", seq: 2, companyCode: "ATA" })).toBe("ATA-OT-000002");
+    expect(buildCourseCode({ groupCode: "OT", seq: 2, companyCode: "ATA", centerCourseCode: "OT-000001" })).toBe(
+      "ATA-OT-000001-000002",
+    );
+    // A Center user never gets the Center number, even with a template picked
+    expect(buildCourseCode({ groupCode: "OT", seq: 5, centerCourseCode: "OT-000001" })).toBe("OT-000005");
+  });
+
+  it("fits the widened 30-character course_code for a 4-letter company code", () => {
+    const code = buildCourseCode({ groupCode: "OT", seq: 999999, companyCode: "ATFB", centerCourseCode: "OT-999999" });
+    expect(code).toBe("ATFB-OT-999999-999999");
+    expect(code.length).toBeLessThanOrEqual(30);
   });
 });
