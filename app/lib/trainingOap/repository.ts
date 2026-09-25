@@ -7,6 +7,7 @@ import { removePlanCertificateDirectory } from "../certificates/storage";
 import { cascadeDeleteTrainingPlans } from "../trainingPlanCascade";
 import { ApiError } from "../api/errors";
 import type { PlanTargetGroupSnapshot, WorkflowCourse } from "../trainingWorkflow";
+import { buildTargetGroupSummary } from "../trainingWorkflow";
 import type { CreateOapPlanInput, OapPlanListFilters, OapPlanStatus, UpdateOapPlanInput } from "./types";
 
 type DatabaseClient = Pick<PrismaClient, "training_plan_oap" | "course">;
@@ -120,8 +121,14 @@ const extractCourseTargets = (
     section: matchedSc.section?.section_name || matchedSc.section?.section_name_en || "",
   };
 
+  const targetGroupSummary = buildTargetGroupSummary(
+    targetPositions,
+    targetLevels,
+    course.target_group,
+  );
+
   return {
-    targetGroup: course.target_group || "",
+    targetGroup: targetGroupSummary,
     targetPositions,
     targetLevels,
     targetCompanies,
@@ -250,6 +257,14 @@ const mapOapPlan = (row: OapPlanWithRelations, sequence: number) => {
       (l) => l.employee_level.level_code || l.employee_level.level_code_en || l.employee_level.level_key,
     );
     targetCompanies = (row.training_plan_oap_target_company || []).map((c) => c.company.company_code);
+    targetGroup = row.target_group_snapshot || "";
+    if (!targetGroup || targetGroup === row.course.target_group) {
+      if (targetPositions.length > 0 || targetLevels.length > 0) {
+        targetGroup = buildTargetGroupSummary(targetPositions, targetLevels, row.course.target_group);
+      } else if (!targetGroup) {
+        targetGroup = row.course.target_group || "";
+      }
+    }
   } else {
     const fallback = extractCourseTargets(row.course as CourseWithStandardRelations, row.plan_year);
     targetPositions = fallback.targetPositions;

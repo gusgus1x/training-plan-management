@@ -2512,3 +2512,244 @@
   font-style: normal;
   font-weight: 700;
 }
+
+/* ==========================================================================
+   ATTG 60-30-10 Modal Dialog System for Training Rolling
+   ========================================================================== */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  padding: 24px 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  animation: modalFadeIn 0.2s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modalDialog {
+  background: var(--ui-60-surface, #ffffff);
+  border: 1px solid var(--ui-30-border, #cbd5e1);
+  border-radius: 20px;
+  width: min(1180px, 96vw);
+  max-height: min(90vh, 920px);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  animation: modalSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+  margin: auto;
+  position: relative;
+}
+
+@keyframes modalSlideUp {
+  from { transform: translateY(20px) scale(0.98); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+:global([data-theme="dark"]) .modalDialog,
+:global(.dark) .modalDialog {
+  background: #111827;
+  border-color: #2e3d58;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--ui-30-border, #e2e8f0);
+  background: var(--ui-60-surface-soft, #f8fafc);
+  flex-shrink: 0;
+  gap: 16px;
+}
+
+:global([data-theme="dark"]) .modalHeader,
+:global(.dark) .modalHeader {
+  background: #182234;
+  border-color: #2e3d58;
+}
+
+.modalTitle {
+  font-size: 1.18rem;
+  font-weight: 800;
+  color: var(--ui-30-ink, #0f172a);
+  margin: 0;
+  line-height: 1.35;
+}
+
+:global([data-theme="dark"]) .modalTitle,
+:global(.dark) .modalTitle {
+  color: #f8fafc;
+}
+
+.modalHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.modalStateBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  background: var(--ui-30-primary-soft, rgba(0, 122, 61, 0.1));
+  color: var(--ui-30-primary, #007a3d);
+  border: 1px solid var(--ui-30-primary-border, rgba(0, 122, 61, 0.25));
+}
+
+:global([data-theme="dark"]) .modalStateBadge,
+:global(.dark) .modalStateBadge {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.35);
+}
+
+.modalCloseButton {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid var(--ui-30-border, #cbd5e1);
+  background: var(--ui-60-surface, #ffffff);
+  color: var(--ui-30-muted, #64748b);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+
+:global([data-theme="dark"]) .modalCloseButton,
+:global(.dark) .modalCloseButton {
+  background: #1e293b;
+  border-color: #334155;
+  color: #94a3b8;
+}
+
+.modalCloseButton:hover {
+  background: #fee2e2;
+  border-color: #fecaca;
+  color: #ef4444;
+}
+
+:global([data-theme="dark"]) .modalCloseButton:hover,
+:global(.dark) .modalCloseButton:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #f87171;
+}
+
+.modalBody {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 22px 24px;
+  overscroll-behavior: contain;
+}
+
+.modalBody::-webkit-scrollbar {
+  width: 8px;
+}
+.modalBody::-webkit-scrollbar-track {
+  background: var(--ui-60-surface-soft, #f1f5f9);
+}
+:global([data-theme="dark"]) .modalBody::-webkit-scrollbar-track,
+:global(.dark) .modalBody::-webkit-scrollbar-track {
+  background: #131b2e;
+}
+.modalBody::-webkit-scrollbar-thumb {
+  background: var(--ui-30-border, #cbd5e1);
+  border-radius: 4px;
+}
+:global([data-theme="dark"]) .modalBody::-webkit-scrollbar-thumb,
+:global(.dark) .modalBody::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+
+.modalFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 14px 24px;
+  border-top: 1px solid var(--ui-30-border, #e2e8f0);
+  background: var(--ui-60-surface-soft, #f8fafc);
+  flex-shrink: 0;
+}
+
+:global([data-theme="dark"]) .modalFooter,
+:global(.dark) .modalFooter {
+  background: #182234;
+  border-color: #2e3d58;
+}
+
+:global([data-theme="dark"]) .modalBody input,
+:global([data-theme="dark"]) .modalBody select,
+:global([data-theme="dark"]) .modalBody textarea,
+:global(.dark) .modalBody input,
+:global(.dark) .modalBody select,
+:global(.dark) .modalBody textarea {
+  background: #1e293b;
+  border-color: #334155;
+  color: #f8fafc;
+}
+
+:global([data-theme="dark"]) .modalBody input:disabled,
+:global([data-theme="dark"]) .modalBody select:disabled,
+:global([data-theme="dark"]) .modalBody textarea:disabled,
+:global(.dark) .modalBody input:disabled,
+:global(.dark) .modalBody select:disabled,
+:global(.dark) .modalBody textarea:disabled {
+  background: #131b2e;
+  color: #94a3b8;
+  border-color: #243450;
+}
+
+:global([data-theme="dark"]) .sessionCard,
+:global(.dark) .sessionCard {
+  background: #1a253c;
+  border-color: #2e3d58;
+}
+
+:global([data-theme="dark"]) .sessionHeader,
+:global(.dark) .sessionHeader {
+  border-bottom-color: #2e3d58;
+  color: #f8fafc;
+}
+
+:global([data-theme="dark"]) .previewCard,
+:global(.dark) .previewCard {
+  background: #1a253c;
+  border-color: #2e3d58;
+}
+
+:global([data-theme="dark"]) .previewCardHeader,
+:global(.dark) .previewCardHeader {
+  border-bottom-color: #2e3d58;
+  color: #f8fafc;
+}
+
+:global([data-theme="dark"]) .previewFieldLabel,
+:global(.dark) .previewFieldLabel {
+  color: #94a3b8;
+}
+
+:global([data-theme="dark"]) .previewFieldValue,
+:global(.dark) .previewFieldValue {
+  color: #f8fafc;
+}
+

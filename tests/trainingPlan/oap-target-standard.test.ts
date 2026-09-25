@@ -136,7 +136,7 @@ describe("OAP Target Standard Persistence in DB", () => {
     expect(data.division_id).toBe(BigInt(6));
     expect(data.department_id).toBe(BigInt(7));
     expect(data.section_id).toBe(BigInt(8));
-    expect(data.target_group_snapshot).toBe("All factory workers");
+    expect(data.target_group_snapshot).toBe("Safety Officer, Junior Tech (L1, L2)");
     expect(data.training_plan_oap_target_position).toEqual({
       create: [{ position_id: BigInt(101) }, { position_id: BigInt(102) }],
     });

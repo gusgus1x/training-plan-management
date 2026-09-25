@@ -577,6 +577,23 @@ function CourseMaster() {
   const newCourseName = searchParams.get("newCourseName")?.trim() ?? "";
   const handoffQuery = searchParams.get("needRequestIds")?.trim() ?? "";
   const [openDetailCourseId, setOpenDetailCourseId] = useState("");
+
+  useEffect(() => {
+    if (isNewOpen || Boolean(openDetailCourseId)) {
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === "Escape") {
+          handleClosePanel();
+        }
+      };
+      window.addEventListener("keydown", handleKeyDown);
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        window.removeEventListener("keydown", handleKeyDown);
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [isNewOpen, openDetailCourseId]);
   const [search, setSearch] = useState("");
   const [listCompanyFilter, setListCompanyFilter] = useState("");
   /**
@@ -2287,19 +2304,31 @@ function CourseMaster() {
     );
 
     return (
-      <section className={styles.formPanel}>
-      <div className={styles.panelHeader}>
-        <div>
-          <p className={styles.kicker}>{isEditing ? "Input form" : "Preview"}</p>
-          <h3>{title}</h3>
-        </div>
-        <div className={styles.panelActions}>
-          <span>{stateLabel}</span>
-          <button className={styles.closeButton} type="button" onClick={handleClosePanel}>
-            Close
-          </button>
-        </div>
-      </div>
+      <div className={styles.modalOverlay} onClick={handleClosePanel}>
+        <div
+          className={styles.modalDialog}
+          onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className={styles.modalHeader}>
+            <div>
+              <p className={styles.kicker}>{isEditing ? (isNewOpen ? "Input form" : "Editing") : "Preview"}</p>
+              <h3 className={styles.modalTitle}>{title}</h3>
+            </div>
+            <div className={styles.modalHeaderActions}>
+              <span className={styles.modalStateBadge}>{stateLabel}</span>
+              <button
+                className={styles.modalCloseButton}
+                type="button"
+                onClick={handleClosePanel}
+                aria-label="Close modal"
+              >
+                <X size={18} />
+              </button>
+            </div>
+          </div>
+          <div className={styles.modalBody}>
 
       {isNewOpen ? (
         <div style={{
@@ -3039,22 +3068,30 @@ function CourseMaster() {
         </div>
       </section>
 
-      {isEditing ? (
-        <div className={styles.formActions}>
-          <button
-            className={styles.primaryButton}
-            disabled={!isCourseFormReady || selectedCompanies.length === 0}
-            type="button"
-            onClick={handleSave}
-          >
-            บันทึกหลักสูตรและมาตรฐาน / Save Course & Standard
-          </button>
-          <button className={styles.secondaryButton} type="button" onClick={handleClosePanel}>
-            Cancel
-          </button>
+          </div>
+          <div className={styles.modalFooter}>
+            {isEditing ? (
+              <>
+                <button
+                  className={styles.primaryButton}
+                  disabled={!isCourseFormReady || selectedCompanies.length === 0}
+                  type="button"
+                  onClick={handleSave}
+                >
+                  บันทึกหลักสูตรและมาตรฐาน / Save Course & Standard
+                </button>
+                <button className={styles.secondaryButton} type="button" onClick={handleClosePanel}>
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <button className={styles.secondaryButton} type="button" onClick={handleClosePanel}>
+                {language === "th" ? "ปิด" : "Close"}
+              </button>
+            )}
+          </div>
         </div>
-      ) : null}
-      </section>
+      </div>
     );
   };
 
@@ -3125,10 +3162,20 @@ function CourseMaster() {
           : "Click on any course row in the table below to select, edit, or delete."}
       </p>
 
-      {isNewOpen ? (
-        <div className={styles.topDropPanel}>
-          {renderCoursePanel("New course", "New")}
-        </div>
+      {isNewOpen || openDetailCourseId ? (
+        renderCoursePanel(
+          isNewOpen
+            ? (language === "th" ? "สร้างหลักสูตรและมาตรฐานใหม่" : "Create New Course & Standard")
+            : (() => {
+                const target = courses.find((c) => c.id === openDetailCourseId);
+                return target
+                  ? `[${target.courseCode}] ${getCourseDisplayName(target)}`
+                  : language === "th"
+                  ? "รายละเอียดหลักสูตร"
+                  : "Course Details";
+              })(),
+          isNewOpen ? "New" : isEditing ? "Editing" : "Read only",
+        )
       ) : null}
 
       <section className={styles.listPanel}>
@@ -3351,9 +3398,9 @@ function CourseMaster() {
                                     className={styles.detailButton}
                                     type="button"
                                     onClick={() => handleShowDetails(course)}
-                                    title={isOpen && !isEditing ? (language === 'th' ? "ซ่อนรายละเอียด" : "Hide details") : (language === 'th' ? "ดูรายละเอียด" : "Show details")}
+                                    title={language === 'th' ? "ดูรายละเอียด" : "Show details"}
                                   >
-                                    {isOpen && !isEditing ? (language === 'th' ? "ซ่อน" : "Hide") : (language === 'th' ? "รายละเอียด" : "Details")}
+                                    {language === 'th' ? "รายละเอียด" : "Details"}
                                   </button>
                                   <button
                                     className={styles.secondaryButton}
@@ -3421,18 +3468,6 @@ function CourseMaster() {
                                 )}
                               </td>
                             </tr>
-                            {isOpen ? (
-                              <tr className={styles.detailRow}>
-                                <td colSpan={8}>
-                                  <div className={styles.inlinePanel}>
-                                    {renderCoursePanel(
-                                      `${course.courseCode} — ${getCourseDisplayName(course)}`,
-                                      isEditing ? "Editing" : "Read only",
-                                    )}
-                                  </div>
-                                </td>
-                              </tr>
-                            ) : null}
                           </Fragment>
                         );
                       })}

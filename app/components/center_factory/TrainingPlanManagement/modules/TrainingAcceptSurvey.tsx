@@ -995,6 +995,9 @@ export default function TrainingAcceptSurvey({
             plan.provider === "HRD Center" ||
             plan.company === "All Companies" ||
             plan.company === "CENTER";
+          const snapshot = plan.targetSnapshot;
+          const planCourse = plan.course;
+
           const standardCompanies =
             standard?.companies && standard.companies.length > 0
               ? standard.companies
@@ -1002,12 +1005,45 @@ export default function TrainingAcceptSurvey({
           const planCompanies = getRollingPlanCompanies(plan).filter(
             (c) => c !== "HRD Center" && c !== "All Companies",
           );
+
+          const targetPositions =
+            snapshot?.targetPositions && snapshot.targetPositions.length > 0
+              ? snapshot.targetPositions
+              : planCourse?.targetPositions && planCourse.targetPositions.length > 0
+                ? planCourse.targetPositions
+                : standard?.positions ?? [];
+
+          const targetLevels =
+            snapshot?.targetLevels && snapshot.targetLevels.length > 0
+              ? snapshot.targetLevels
+              : planCourse?.targetLevels && planCourse.targetLevels.length > 0
+                ? planCourse.targetLevels
+                : standard?.levels ?? [];
+
           const targetCompanies =
-            standardCompanies.length > 0
-              ? standardCompanies
-              : planCompanies.length > 0
-                ? planCompanies
-                : ["ATA", "ATFB", "NIC", "SATI", "SNF", "TEP"];
+            snapshot?.targetCompanies && snapshot.targetCompanies.length > 0
+              ? snapshot.targetCompanies
+              : planCourse?.targetCompanies && planCourse.targetCompanies.length > 0
+                ? planCourse.targetCompanies
+                : standardCompanies.length > 0
+                  ? standardCompanies
+                  : planCompanies.length > 0
+                    ? planCompanies
+                    : ["ATA", "ATFB", "NIC", "SATI", "SNF", "TEP"];
+
+          const targetFunctionName =
+            snapshot?.orgScope?.functionName ||
+            planCourse?.orgScope?.functionName ||
+            standard?.functionName ||
+            "All Function";
+
+          const targetFunctionCode = standard?.functionCode ?? "";
+
+          const standardName = snapshot
+            ? `${targetFunctionName} (Plan Target)`
+            : standard
+              ? `${standard.functionName || "All Function"} target standard`
+              : "No Course Standard";
 
           return {
             id: plan.rollingId,
@@ -1029,14 +1065,15 @@ export default function TrainingAcceptSurvey({
             courseType: plan.course.courseType,
             courseGroup: plan.course.courseGroup,
             objective: plan.course.objective,
-            targetGroup: plan.course.targetGroup || "",
-            standardName: standard
-              ? `${standard.functionName || "All Function"} target standard`
-              : "No Course Standard",
-            targetFunctionCode: standard?.functionCode ?? "",
-            targetFunctionName: standard?.functionName ?? "All Function",
-            targetPositions: standard?.positions ?? [],
-            targetLevels: standard?.levels ?? [],
+            targetGroup:
+              snapshot?.targetGroup ||
+              plan.course.targetGroup ||
+              "",
+            standardName,
+            targetFunctionCode,
+            targetFunctionName,
+            targetPositions,
+            targetLevels,
             companies: targetCompanies,
           };
         }),

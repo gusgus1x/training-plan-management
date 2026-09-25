@@ -57,6 +57,28 @@ export type PlanTargetGroupSnapshot = {
   };
 };
 
+export const buildTargetGroupSummary = (
+  targetPositions: string[] = [],
+  targetLevels: string[] = [],
+  fallbackText?: string | null,
+): string => {
+  const parts: string[] = [];
+  if (targetPositions.length > 0) {
+    parts.push(targetPositions.join(", "));
+  }
+  if (targetLevels.length > 0) {
+    if (parts.length > 0) {
+      parts[0] = `${parts[0]} (${targetLevels.join(", ")})`;
+    } else {
+      parts.push(targetLevels.join(", "));
+    }
+  }
+  if (parts.length > 0) {
+    return parts.join(" ").slice(0, 500);
+  }
+  return (fallbackText?.trim() || "").slice(0, 500);
+};
+
 export const getCourseDisplayName = (course?: WorkflowCourse | null): string => {
   if (!course) {
     return "";

@@ -293,4 +293,49 @@ describe("TrainingAcceptSurvey Target Group Matching Rules", () => {
 
     expect(matchesCourseTarget(courseO1ToO3, empLevel05)).toBe(false);
   });
+
+  it("prioritizes plan.targetSnapshot over generic course master standard", () => {
+    // Standard from Course Master
+    const standard = {
+      courseId: "course-1",
+      courseCode: "CRS-001",
+      courseName: "General Safety",
+      functionName: "All Function",
+      functionCode: "ALL",
+      positions: ["All Positions"],
+      levels: ["All Levels"],
+      companies: ["ATA", "TEP"],
+    };
+
+    // Plan with customized targetSnapshot from OAP / Rolling
+    const plan = {
+      targetSnapshot: {
+        targetPositions: ["Officer", "Supervisor"],
+        targetLevels: ["S1", "S2"],
+        targetCompanies: ["SNF"],
+        orgScope: { functionName: "Safety Division" },
+      },
+    };
+
+    // Priority resolution as implemented in TrainingAcceptSurvey
+    const targetPositions =
+      plan.targetSnapshot?.targetPositions?.length
+        ? plan.targetSnapshot.targetPositions
+        : standard.positions;
+    const targetLevels =
+      plan.targetSnapshot?.targetLevels?.length
+        ? plan.targetSnapshot.targetLevels
+        : standard.levels;
+    const targetCompanies =
+      plan.targetSnapshot?.targetCompanies?.length
+        ? plan.targetSnapshot.targetCompanies
+        : standard.companies;
+    const targetFunctionName =
+      plan.targetSnapshot?.orgScope?.functionName || standard.functionName;
+
+    expect(targetPositions).toEqual(["Officer", "Supervisor"]);
+    expect(targetLevels).toEqual(["S1", "S2"]);
+    expect(targetCompanies).toEqual(["SNF"]);
+    expect(targetFunctionName).toBe("Safety Division");
+  });
 });

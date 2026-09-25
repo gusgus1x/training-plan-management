@@ -9,6 +9,7 @@ import { removePlanCertificateDirectory } from "../certificates/storage";
 import { notifyEmployees } from "../notifications/notify";
 import { cascadeDeleteTrainingPlans } from "../trainingPlanCascade";
 import type { PlanTargetGroupSnapshot, WorkflowCourse } from "../trainingWorkflow";
+import { buildTargetGroupSummary } from "../trainingWorkflow";
 import type { CreateRollingPlanInput, RollingPlanListFilters, RollingPlanStatus, UpdateRollingPlanInput } from "./types";
 
 type DatabaseClient = Pick<PrismaClient, "training_plan" | "training_plan_oap">;
@@ -201,12 +202,20 @@ const mapRollingPlan = (row: RollingPlanWithRelations) => {
 
   if (hasDbTargets) {
     targetPositions = (oap?.training_plan_oap_target_position || []).map(
-      (p) => p.position.position_name_en || p.position.position_name_th || p.position.position_code,
+      (p) => p.position.position_name_th || p.position.position_name_en || p.position.position_code,
     );
     targetLevels = (oap?.training_plan_oap_target_level || []).map(
       (l) => l.employee_level.level_code || l.employee_level.level_code_en || l.employee_level.level_key,
     );
     targetCompanies = (oap?.training_plan_oap_target_company || []).map((c) => c.company.company_code);
+    targetGroup = oap?.target_group_snapshot || "";
+    if (!targetGroup || targetGroup === oap?.course?.target_group) {
+      if (targetPositions.length > 0 || targetLevels.length > 0) {
+        targetGroup = buildTargetGroupSummary(targetPositions, targetLevels, oap?.course?.target_group);
+      } else if (!targetGroup) {
+        targetGroup = oap?.course?.target_group || "";
+      }
+    }
   } else if (oap?.course) {
     const planYear = oap.plan_year;
     const stdCourses = oap.course.course_standard_course || [];
@@ -215,12 +224,13 @@ const mapRollingPlan = (row: RollingPlanWithRelations) => {
       stdCourses[0];
     if (matchedSc) {
       targetPositions = (matchedSc.course_standard_target_position || []).map(
-        (p) => p.position.position_name_en || p.position.position_name_th || p.position.position_code,
+        (p) => p.position.position_name_th || p.position.position_name_en || p.position.position_code,
       );
       targetLevels = (matchedSc.course_standard_target_level || []).map(
         (l) => l.employee_level.level_code || l.employee_level.level_code_en || l.employee_level.level_key,
       );
       targetCompanies = (matchedSc.course_standard_target_company || []).map((c) => c.company.company_code);
+      targetGroup = buildTargetGroupSummary(targetPositions, targetLevels, oap?.course?.target_group);
     }
   }
 
