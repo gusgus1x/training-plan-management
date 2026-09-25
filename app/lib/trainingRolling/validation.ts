@@ -52,6 +52,15 @@ export const parseCreateRollingPlan = (input: InputObject): CreateRollingPlanInp
   startTime: readTime(input, "startTime"),
   endTime: readTime(input, "endTime"),
   status: status(input.status, "Planning"),
+  instructorId: readOptionalString(input, "instructorId"),
+  trainerName: readOptionalString(input, "trainerName", { maxLength: 255 }),
+  instructorTelephone: readOptionalString(input, "instructorTelephone", { maxLength: 50 }),
+  instructorEmail: readOptionalString(input, "instructorEmail", { maxLength: 255 }),
+  instructorEducation: readOptionalString(input, "instructorEducation", { maxLength: 500 }),
+  instructorOrganization: readOptionalString(input, "instructorOrganization", { maxLength: 255 }),
+  instructorUniversity: readOptionalString(input, "instructorUniversity", { maxLength: 255 }),
+  providerId: readOptionalString(input, "providerId"),
+  providerName: readOptionalString(input, "providerName", { maxLength: 255 }),
   ...(hasOwn(input, "formOverrides") ? { formOverrides: formOverrides(input.formOverrides) } : {}),
 });
 
@@ -66,6 +75,15 @@ export const parseUpdateRollingPlan = (input: InputObject): UpdateRollingPlanInp
   if (hasOwn(input, "startTime")) update.startTime = readTime(input, "startTime");
   if (hasOwn(input, "endTime")) update.endTime = readTime(input, "endTime");
   if (hasOwn(input, "status")) update.status = status(input.status);
+  if (hasOwn(input, "instructorId")) update.instructorId = readOptionalString(input, "instructorId");
+  if (hasOwn(input, "trainerName")) update.trainerName = readOptionalString(input, "trainerName", { maxLength: 255 });
+  if (hasOwn(input, "instructorTelephone")) update.instructorTelephone = readOptionalString(input, "instructorTelephone", { maxLength: 50 });
+  if (hasOwn(input, "instructorEmail")) update.instructorEmail = readOptionalString(input, "instructorEmail", { maxLength: 255 });
+  if (hasOwn(input, "instructorEducation")) update.instructorEducation = readOptionalString(input, "instructorEducation", { maxLength: 500 });
+  if (hasOwn(input, "instructorOrganization")) update.instructorOrganization = readOptionalString(input, "instructorOrganization", { maxLength: 255 });
+  if (hasOwn(input, "instructorUniversity")) update.instructorUniversity = readOptionalString(input, "instructorUniversity", { maxLength: 255 });
+  if (hasOwn(input, "providerId")) update.providerId = readOptionalString(input, "providerId");
+  if (hasOwn(input, "providerName")) update.providerName = readOptionalString(input, "providerName", { maxLength: 255 });
   if (hasOwn(input, "formOverrides")) update.formOverrides = formOverrides(input.formOverrides);
 
   if (!Object.keys(update).length) throw invalid("body", "At least one editable field is required");

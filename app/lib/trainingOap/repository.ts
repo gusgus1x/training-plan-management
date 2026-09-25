@@ -299,6 +299,11 @@ const mapOapPlan = (row: OapPlanWithRelations, sequence: number) => {
     budgetFoodBeverage: row.budget_food_beverage?.toString() ?? "",
     trainer: row.instructor_name_text || instructorName,
     instructorId: row.instructor_id?.toString() ?? null,
+    instructorTelephone: row.instructor_telephone || row.instructor?.telephone || "",
+    instructorEmail: row.instructor_email || row.instructor?.email || "",
+    instructorEducation: row.instructor_education || row.instructor?.education || "",
+    instructorOrganization: row.instructor_organization || row.instructor?.organization_name || "",
+    instructorUniversity: row.instructor_university || row.instructor?.university || "",
     providerId: row.provider_id?.toString() ?? null,
     providerName: row.provider_name_text || row.institute_provider?.institute_provider_name || "",
     createdBy: row.created_by.toString(),
@@ -471,6 +476,11 @@ let oapCode = baseCode;
             budget_food_beverage: cleanBudgetPart(input.budgetFoodBeverage),
             instructor_id: safeBigInt(input.instructorId),
             instructor_name_text: input.trainerName || null,
+            instructor_telephone: input.instructorTelephone || null,
+            instructor_email: input.instructorEmail || null,
+            instructor_education: input.instructorEducation || null,
+            instructor_organization: input.instructorOrganization || null,
+            instructor_university: input.instructorUniversity || null,
             provider_id: safeBigInt(input.providerId),
             provider_name_text: input.providerName || null,
             enrollment_mode: "BOTH",
@@ -589,6 +599,11 @@ let oapCode = baseCode;
         if (input.budgetFoodBeverage !== undefined) data.budget_food_beverage = String(input.budgetFoodBeverage).replace(/,/g, "").trim() || "0";
         if (input.instructorId !== undefined) data.instructor_id = safeBigInt(input.instructorId);
         if (input.trainerName !== undefined) data.instructor_name_text = input.trainerName || null;
+        if (input.instructorTelephone !== undefined) data.instructor_telephone = input.instructorTelephone || null;
+        if (input.instructorEmail !== undefined) data.instructor_email = input.instructorEmail || null;
+        if (input.instructorEducation !== undefined) data.instructor_education = input.instructorEducation || null;
+        if (input.instructorOrganization !== undefined) data.instructor_organization = input.instructorOrganization || null;
+        if (input.instructorUniversity !== undefined) data.instructor_university = input.instructorUniversity || null;
         if (input.providerId !== undefined) data.provider_id = safeBigInt(input.providerId);
         if (input.providerName !== undefined) data.provider_name_text = input.providerName || null;
         if (input.status !== undefined) data.status = UI_STATUS_TO_DB[input.status];

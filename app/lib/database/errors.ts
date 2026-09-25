@@ -44,11 +44,22 @@ export const translateDatabaseError = (error: unknown): ApiError | null => {
       driverMsg.toLowerCase().includes("name_normalized") ||
       driverMsg.toLowerCase().includes("ux_course_central_name_normalized") ||
       driverMsg.toLowerCase().includes("ux_course");
+    const isBatchRoundUnique =
+      target.includes("batch_round") ||
+      target.includes("batch_name") ||
+      driverMsg.includes("UQ_training_plan_oap_batch_round") ||
+      driverMsg.toLowerCase().includes("oap_batch_round");
+
+    let message = "A record with the same unique value already exists";
+    if (isCourseName) {
+      message = "A course with the same name already exists";
+    } else if (isBatchRoundUnique) {
+      message = "รุ่นและรอบการอบรมนี้มีอยู่ในระบบแล้ว (Batch and Round already exist for this OAP plan)";
+    }
+
     return new ApiError({
       code: "RESOURCE_CONFLICT",
-      message: isCourseName
-        ? "A course with the same name already exists"
-        : "A record with the same unique value already exists",
+      message,
       status: 409,
     });
   }

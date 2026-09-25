@@ -79,85 +79,7 @@ type TrainingOAPProps = {
   username?: string;
 };
 
-export type MissingCourseField = {
-  key: string;
-  category: "target" | "detail" | "evaluation";
-  labelTh: string;
-  labelEn: string;
-  icon: React.ReactNode;
-};
 
-const getMissingCourseFields = (
-  course: WorkflowCourse | null,
-  standard: WorkflowStandard | null,
-): MissingCourseField[] => {
-  if (!course) return [];
-  const missing: MissingCourseField[] = [];
-
-  // 1. ที่มา (Background / Reason)
-  if (!course.remark?.trim()) {
-    missing.push({ key: "remark", category: "detail", labelTh: "ที่มา (Background / Reason)", labelEn: "Background / Reason", icon: <FileText size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> });
-  }
-
-  // 2. วัตถุประสงค์การเรียนรู้ (Objective)
-  if (!course.objective?.trim()) {
-    missing.push({ key: "objective", category: "detail", labelTh: "วัตถุประสงค์การเรียนรู้ (Objective)", labelEn: "Learning Objective", icon: <Target size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> });
-  }
-
-  // 3. หัวข้อการเรียนรู้ (Learning Content)
-  if (!course.learningContent?.trim()) {
-    missing.push({ key: "learningContent", category: "detail", labelTh: "หัวข้อการเรียนรู้ (Learning Content)", labelEn: "Learning Content", icon: <BookOpen size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> });
-  }
-
-  // 4. กลุ่มผู้เข้าอบรม (Target Group)
-  if (!course.targetGroup?.trim()) {
-    missing.push({ key: "targetGroup", category: "target", labelTh: "กลุ่มผู้เข้าอบรม (Target Group)", labelEn: "Target Group", icon: <Users size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> });
-  }
-
-  // 5. วิธีการอบรม (Methodology)
-  if (!course.methodology?.trim()) {
-    missing.push({ key: "methodology", category: "detail", labelTh: "วิธีการอบรม (Methodology)", labelEn: "Methodology", icon: <Settings size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> });
-  }
-
-  // 6. ตำแหน่งกลุ่มเป้าหมาย (Target Positions)
-  const hasPositions = standard?.positions && standard.positions.length > 0;
-  if (!hasPositions) {
-    missing.push({ key: "positions", category: "target", labelTh: "ตำแหน่งกลุ่มเป้าหมาย (Target Positions)", labelEn: "Target Positions", icon: <Briefcase size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> });
-  }
-
-  // 7. ระดับกลุ่มเป้าหมาย (Target Levels)
-  const hasLevels = standard?.levels && standard.levels.length > 0;
-  if (!hasLevels) {
-    missing.push({ key: "levels", category: "target", labelTh: "ระดับกลุ่มเป้าหมาย (Target Levels)", labelEn: "Target Levels", icon: <Star size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> });
-  }
-
-  // 8. สายงานกลุ่มเป้าหมาย (Target Function)
-  const hasFunction = Boolean(standard?.functionName?.trim() || standard?.functionCode?.trim());
-  if (!hasFunction) {
-    missing.push({ key: "function", category: "target", labelTh: "สายงานกลุ่มเป้าหมาย (Target Function)", labelEn: "Target Function", icon: <Building2 size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> });
-  }
-
-  // 9. กลุ่มและประเภทหลักสูตร
-  if (!course.courseGroup?.trim()) {
-    missing.push({ key: "courseGroup", category: "detail", labelTh: "กลุ่มหลักสูตร (Course Group)", labelEn: "Course Group", icon: <Tag size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> });
-  }
-  if (!course.courseType?.trim()) {
-    missing.push({ key: "courseType", category: "detail", labelTh: "ประเภทหลักสูตร (Course Type)", labelEn: "Course Type", icon: <Folder size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> });
-  }
-
-  // 10. แบบทดสอบและแบบประเมิน
-  if (!course.preTestId && !course.preTestLink && !course.preTest?.trim()) {
-    missing.push({ key: "preTest", category: "evaluation", labelTh: "แบบทดสอบก่อนเรียน (Pre-Test)", labelEn: "Pre-Test Form", icon: <FileEdit size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> });
-  }
-  if (!course.postTestId && !course.postTestLink && !course.postTest?.trim()) {
-    missing.push({ key: "postTest", category: "evaluation", labelTh: "แบบทดสอบหลังเรียน (Post-Test)", labelEn: "Post-Test Form", icon: <ClipboardList size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> });
-  }
-  if (!course.evaluationId && !course.evaluationLink && !course.evaluation?.trim()) {
-    missing.push({ key: "evaluation", category: "evaluation", labelTh: "แบบประเมินผลการอบรม (Evaluation Form)", labelEn: "Evaluation Form", icon: <Star size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> });
-  }
-
-  return missing;
-};
 
 const emptyForm = {
   courseCode: "",
@@ -320,8 +242,6 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   const [yearFilter, setYearFilter] = useState<string>("all");
   const [instructors, setInstructors] = useState<InstructorRecord[]>([]);
   const [providers, setProviders] = useState<InstituteProviderRecord[]>([]);
-  const [showTargetWarningModal, setShowTargetWarningModal] = useState(false);
-  const lastWarnedCourseRef = useRef<string | null>(null);
   const userCompanyCode = profileValue(user?.companyCode);
 
   const currentCalendarYear = new Date().getFullYear();
@@ -470,49 +390,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
     );
   }, [selectedCourse, standards]);
 
-  const missingCourseFields = useMemo(
-    () => getMissingCourseFields(selectedCourse, selectedCourseStandard),
-    [selectedCourse, selectedCourseStandard],
-  );
 
-  const popupTriggerMissingFields = useMemo(
-    () => missingCourseFields.filter((f) => f.category !== "evaluation"),
-    [missingCourseFields],
-  );
-
-  const hasTargetGroupMissing = useMemo(
-    () => missingCourseFields.some((f) => f.key === "positions" || f.key === "levels"),
-    [missingCourseFields],
-  );
-
-  const missingTargetFields = useMemo(
-    () => missingCourseFields.filter((f) => f.category === "target"),
-    [missingCourseFields],
-  );
-
-  const missingDetailFields = useMemo(
-    () => missingCourseFields.filter((f) => f.category === "detail"),
-    [missingCourseFields],
-  );
-
-  useEffect(() => {
-    if (!isNewOpen || !selectedCourse) {
-      if (!isNewOpen) {
-        lastWarnedCourseRef.current = null;
-        setShowTargetWarningModal(false);
-      }
-      return;
-    }
-
-    if (lastWarnedCourseRef.current !== selectedCourse.courseCode) {
-      lastWarnedCourseRef.current = selectedCourse.courseCode;
-      if (popupTriggerMissingFields.length > 0) {
-        setShowTargetWarningModal(true);
-      } else {
-        setShowTargetWarningModal(false);
-      }
-    }
-  }, [isNewOpen, selectedCourse, popupTriggerMissingFields]);
 
   const scopedPlans = useMemo(
     () =>
@@ -800,6 +678,11 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
       budgetFoodBeverage: form.budgetFoodBeverage.trim() || "0",
       trainerName: form.trainer.trim(),
       instructorId: resolveInstructorId(form.trainer),
+      instructorTelephone: form.instructorTelephone?.trim() || "",
+      instructorEmail: form.instructorEmail?.trim() || "",
+      instructorEducation: form.instructorEducation?.trim() || "",
+      instructorOrganization: form.instructorOrganization?.trim() || "",
+      instructorUniversity: form.instructorUniversity?.trim() || "",
       providerName: form.provider.trim(),
       providerId: resolveProviderId(form.provider),
     };
@@ -861,11 +744,11 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
       budgetFoodBeverage: plan.budgetFoodBeverage,
       trainer: plan.trainer,
       instructorId: matched?.instructorId ?? "",
-      instructorUniversity: matched?.university ?? "",
-      instructorEducation: matched?.education ?? "",
-      instructorOrganization: matched?.organizationName ?? "",
-      instructorTelephone: matched?.telephone ?? "",
-      instructorEmail: matched?.email ?? "",
+      instructorUniversity: plan.instructorUniversity || matched?.university || "",
+      instructorEducation: plan.instructorEducation || matched?.education || "",
+      instructorOrganization: plan.instructorOrganization || matched?.organizationName || "",
+      instructorTelephone: plan.instructorTelephone || matched?.telephone || "",
+      instructorEmail: plan.instructorEmail || matched?.email || "",
       provider: plan.providerName,
     });
     setIsNewOpen(true);
@@ -1254,86 +1137,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                     </div>
                   </div>
 
-                  {/* Course Master Completeness Notification */}
-                  {missingCourseFields.length > 0 ? (
-                    <div className={styles.incompleteCourseAlert}>
-                      <div className={styles.incompleteAlertHeader}>
-                        <span className={styles.incompleteAlertIcon}><AlertTriangle size={18} color="#f59e0b" /></span>
-                        <div className={styles.incompleteAlertTitle}>
-                          <strong>{t("ข้อมูลใน Course Master ยังไม่ครบถ้วน", "Course Master Information Incomplete")}</strong>
-                          <span>
-                            {t(
-                              `หลักสูตร [${selectedCourse.courseCode}] ยังขาดข้อมูล ${missingCourseFields.length} ส่วน:`,
-                              `Course [${selectedCourse.courseCode}] is missing ${missingCourseFields.length} field(s):`,
-                            )}
-                          </span>
-                        </div>
-                      </div>
 
-                      {hasTargetGroupMissing && (
-                        <div className={styles.targetWarningCallout} style={{ margin: "4px 0 10px" }}>
-                          <span className={styles.targetWarningCalloutIcon}><AlertTriangle size={18} /></span>
-                          <div className={styles.targetWarningCalloutText}>
-                            <strong>
-                              {t(
-                                "⚠️ ข้อควรระวัง: ยังไม่ได้ระบุตำแหน่งกลุ่มเป้าหมาย หรือระดับกลุ่มเป้าหมาย",
-                                "⚠️ Warning: Target Positions or Levels are not specified",
-                              )}
-                            </strong>
-                            <span>
-                              {t(
-                                "หากไม่ใส่ตำแหน่งและระดับกลุ่มเป้าหมาย จะทำให้คุณไม่ทราบกลุ่มเป้าหมายที่ชัดเจน และระบบจะไม่สามารถจับคู่คัดกรองพนักงานในแบบตอบรับการอบรม (Training Accept Survey) ได้",
-                                "Without specifying target positions and levels, you will not know the exact target audience, and the system cannot match employees in the Training Accept Survey.",
-                              )}
-                            </span>
-                          </div>
-                        </div>
-                      )}
-
-                      <div className={styles.missingPillsList}>
-                        {missingCourseFields.map((field) => (
-                          <span
-                            key={field.key}
-                            className={
-                              field.key === "positions" || field.key === "levels"
-                                ? styles.targetWarningPillHigh
-                                : styles.missingPill
-                            }
-                          >
-                            {field.icon} {t(field.labelTh, field.labelEn)}
-                          </span>
-                        ))}
-                      </div>
-
-                      <div className={styles.incompleteAlertFooter}>
-                        <p className={styles.incompleteAlertQuestion}>
-                          <><MessageSquare size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{t("ต้องการไปกรอกข้อมูลใน Course Master ก่อน หรือสร้างแผน OAP ต่อได้เลย?", "Would you like to complete the Course Master details first, or proceed with OAP anyway?")}</>
-                        </p>
-                        <div className={styles.incompleteAlertActions}>
-                          <button
-                            type="button"
-                            className={styles.goToCourseMasterBtn}
-                            onClick={() => {
-                              const targetUrl = selectedCourse
-                                ? `/training-course/course-master-standard?editCourse=${encodeURIComponent(selectedCourse.courseCode)}`
-                                : "/training-course/course-master-standard";
-                              router.push(targetUrl);
-                            }}
-                          >
-                            <><FileEdit size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{t("ไปกรอกข้อมูลใน Course Master ก่อน", "Go to Course Master")}</>
-                          </button>
-                          <span className={styles.orDivider}>{t("หรือ", "or")}</span>
-                          <span className={styles.proceedNote}>
-                            {t("กรอกข้อมูลด้านล่างแล้วสร้างแผน OAP ต่อได้เลย", "Fill in details below and create OAP plan directly")}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className={styles.completeCourseBadge}>
-                      <span><CheckCircle2 size={14} color="#10b981" style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{t("ข้อมูลใน Course Master ครบถ้วนสมบูรณ์แล้ว", "Course Master information is complete")}</span>
-                    </div>
-                  )}
                 </div>
               ) : null}
               {/* === CAPACITY & BUDGET SECTION === */}
@@ -1352,7 +1156,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                     </span>
                     {Number(form.participants) > 0 && Number(form.budget) > 0 ? (
                       <span className={styles.budgetPerHeadBadge}>
-                        (~฿{Math.round(Number(form.budget) / Number(form.participants)).toLocaleString("en-US")} / " + t("คน", "person") + ")
+                        (~฿{Math.round(Number(form.budget) / Number(form.participants)).toLocaleString("en-US")} / {t("คน", "person")})
                       </span>
                     ) : null}
                   </div>
@@ -1816,7 +1620,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                         </strong>
                         {Number(form.participants) > 0 && Number(form.budget) > 0 ? (
                           <span className={styles.previewBudgetPerHead}>
-                            (~฿{Math.round(Number(form.budget) / Number(form.participants)).toLocaleString("en-US")} / " + t("คน", "person") + ")
+                            (~฿{Math.round(Number(form.budget) / Number(form.participants)).toLocaleString("en-US")} / {t("คน", "person")})
                           </span>
                         ) : null}
                       </span>
@@ -1984,11 +1788,11 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                       {matchedPlanInstructor?.instructorCode ? (
                         <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("รหัสวิทยากร", "Instructor Code")}</span><span className={styles.previewFieldValue}>{matchedPlanInstructor.instructorCode}</span></div>
                       ) : null}
-                      <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("มหาวิทยาลัย", "University")}</span><span className={styles.previewFieldValue}>{matchedPlanInstructor?.university || "-"}</span></div>
-                      <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("วุฒิการศึกษา", "Education")}</span><span className={styles.previewFieldValue}>{matchedPlanInstructor?.education || "-"}</span></div>
-                      <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("หน่วยงาน / สังกัด", "Organization")}</span><span className={styles.previewFieldValue}>{matchedPlanInstructor?.organizationName || "-"}</span></div>
-                      <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("เบอร์โทรศัพท์", "Telephone")}</span><span className={styles.previewFieldValue}>{matchedPlanInstructor?.telephone || "-"}</span></div>
-                      <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("อีเมล", "Email")}</span><span className={styles.previewFieldValue}>{matchedPlanInstructor?.email || "-"}</span></div>
+                      <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("มหาวิทยาลัย", "University")}</span><span className={styles.previewFieldValue}>{activeDetailPlan.instructorUniversity || matchedPlanInstructor?.university || "-"}</span></div>
+                      <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("วุฒิการศึกษา", "Education")}</span><span className={styles.previewFieldValue}>{activeDetailPlan.instructorEducation || matchedPlanInstructor?.education || "-"}</span></div>
+                      <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("หน่วยงาน / สังกัด", "Organization")}</span><span className={styles.previewFieldValue}>{activeDetailPlan.instructorOrganization || matchedPlanInstructor?.organizationName || "-"}</span></div>
+                      <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("เบอร์โทรศัพท์", "Telephone")}</span><span className={styles.previewFieldValue}>{activeDetailPlan.instructorTelephone || matchedPlanInstructor?.telephone || "-"}</span></div>
+                      <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("อีเมล", "Email")}</span><span className={styles.previewFieldValue}>{activeDetailPlan.instructorEmail || matchedPlanInstructor?.email || "-"}</span></div>
                       <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("ผู้ให้บริการ", "Provider")}</span><span className={styles.previewFieldValue}>{activeDetailPlan.providerName || "-"}</span></div>
                       <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>Created By</span><span className={styles.previewFieldValue}>{activeDetailPlan.owner === "CENTER" ? "Center" : activeDetailPlan.ownerCompany}</span></div>
                     </div>
@@ -2230,152 +2034,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
         </div>
       </section>
 
-      {/* Target Group & Course Details Warning Modal */}
-      {showTargetWarningModal && selectedCourse && (
-        <div
-          className={styles.targetWarningBackdrop}
-          onClick={() => setShowTargetWarningModal(false)}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="target-warning-modal-title"
-        >
-          <div
-            className={styles.targetWarningModal}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className={styles.targetWarningHeader}>
-              <div className={styles.targetWarningHeaderTitle}>
-                <div className={styles.targetWarningHeaderIcon}>
-                  <AlertTriangle size={24} />
-                </div>
-                <div>
-                  <h3 id="target-warning-modal-title">
-                    {t(
-                      "แจ้งเตือน: ข้อมูลหลักสูตรใน Course Master ยังไม่ครบถ้วน",
-                      "Warning: Course Master Information Incomplete",
-                    )}
-                  </h3>
-                  <p>
-                    {t(
-                      `หลักสูตร: [${selectedCourse.courseCode}] ${getCourseDisplayName(selectedCourse)}`,
-                      `Course: [${selectedCourse.courseCode}] ${getCourseDisplayName(selectedCourse)}`,
-                    )}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                className={styles.targetWarningCloseBtn}
-                onClick={() => setShowTargetWarningModal(false)}
-                title={t("ปิดหน้าต่าง", "Close")}
-              >
-                <X size={20} />
-              </button>
-            </div>
 
-            {/* Special Emphasized Callout for Target Positions / Levels */}
-            {hasTargetGroupMissing && (
-              <div className={styles.targetWarningCallout}>
-                <div className={styles.targetWarningCalloutIcon}>
-                  <AlertTriangle size={22} />
-                </div>
-                <div className={styles.targetWarningCalloutText}>
-                  <strong>
-                    {t(
-                      "⚠️ ข้อควรระวัง: ยังไม่ได้ระบุตำแหน่งกลุ่มเป้าหมาย และระดับกลุ่มเป้าหมาย",
-                      "⚠️ Warning: Target Positions and Target Levels are not specified",
-                    )}
-                  </strong>
-                  <span>
-                    {t(
-                      "หากไม่ใส่ตำแหน่งและระดับกลุ่มเป้าหมาย คุณจะไม่ทราบกลุ่มเป้าหมายที่ชัดเจน และระบบจะไม่สามารถจับคู่คัดกรองพนักงานในแบบตอบรับการอบรม (Training Accept Survey) ได้",
-                      "Without specifying target positions and levels, you will not know the exact target audience, and the system cannot match/filter employees in the Training Accept Survey.",
-                    )}
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {/* Target Group Section */}
-            {missingTargetFields.length > 0 && (
-              <div className={styles.targetWarningSection}>
-                <div className={styles.targetWarningSectionLabel}>
-                  <Users size={14} />
-                  <span>{t("ข้อมูลกลุ่มเป้าหมายที่ยังไม่ได้ระบุ:", "Missing Target Group Information:")}</span>
-                </div>
-                <div className={styles.targetWarningPillsList}>
-                  {missingTargetFields.map((field) => (
-                    <span
-                      key={field.key}
-                      className={
-                        field.key === "positions" || field.key === "levels"
-                          ? styles.targetWarningPillHigh
-                          : styles.targetWarningPillNormal
-                      }
-                    >
-                      {field.icon} {t(field.labelTh, field.labelEn)}
-                      {(field.key === "positions" || field.key === "levels") && (
-                        <span style={{ fontSize: "0.72rem", opacity: 0.9, marginLeft: 4 }}>({t("จำเป็นต่อ Survey", "Required for Survey")})</span>
-                      )}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Course Details Section */}
-            {missingDetailFields.length > 0 && (
-              <div className={styles.targetWarningSection}>
-                <div className={styles.targetWarningSectionLabel}>
-                  <FileText size={14} />
-                  <span>{t("รายละเอียดภายในหลักสูตรที่ยังไม่ได้ระบุ:", "Missing Course Internal Details:")}</span>
-                </div>
-                <div className={styles.targetWarningPillsList}>
-                  {missingDetailFields.map((field) => (
-                    <span key={field.key} className={styles.targetWarningPillNormal}>
-                      {field.icon} {t(field.labelTh, field.labelEn)}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Sub-note for Evaluation and Pre/Post tests */}
-            <p className={styles.targetWarningSubNote}>
-              {t(
-                "💡 หมายเหตุ: แบบทดสอบก่อน/หลังเรียน และแบบประเมินผล สามารถกำหนดเพิ่มเติมในภายหลังได้ และจะไม่ขัดขวางการวางแผน OAP",
-                "💡 Note: Pre/Post-tests and Evaluation forms can be configured later and will not block OAP planning.",
-              )}
-            </p>
-
-            {/* Action Buttons */}
-            <div className={styles.targetWarningActions}>
-              <button
-                type="button"
-                className={styles.targetWarningSecondaryBtn}
-                onClick={() => setShowTargetWarningModal(false)}
-              >
-                {t("รับทราบ และสร้างแผน OAP ต่อ", "Acknowledge & Proceed with OAP")}
-              </button>
-              <button
-                type="button"
-                className={styles.targetWarningPrimaryBtn}
-                onClick={() => {
-                  setShowTargetWarningModal(false);
-                  const targetUrl = selectedCourse
-                    ? `/training-course/course-master-standard?editCourse=${encodeURIComponent(selectedCourse.courseCode)}`
-                    : "/training-course/course-master-standard";
-                  router.push(targetUrl);
-                }}
-              >
-                <FileEdit size={16} />
-                {t("ไปกรอกข้อมูลใน Course Master ก่อน", "Go to Course Master")}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </section>
   );
 }

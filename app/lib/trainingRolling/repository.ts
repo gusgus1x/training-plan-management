@@ -116,6 +116,7 @@ const mapCourseSnapshot = (
 const oapSummaryInclude = {
   course: { include: courseInclude },
   instructor: true,
+  institute_provider: true,
   company: true,
   organization_function: true,
   division: true,
@@ -130,6 +131,8 @@ type OapSummary = Prisma.training_plan_oapGetPayload<{ include: typeof oapSummar
 
 const rollingInclude = {
   training_plan_oap: { include: oapSummaryInclude },
+  instructor: true,
+  institute_provider: true,
   training_expense: { select: { expense_id: true } },
   training_enrollment: {
     where: { training_result: { isNot: null } },
@@ -167,9 +170,22 @@ const mapRollingPlan = (row: RollingPlanWithRelations) => {
   const oap = row.training_plan_oap;
   const owner = oap?.company_id ? "FACTORY" : "CENTER";
   const ownerCompany = oap?.company?.company_code ?? "CENTER";
-  const instructorName = oap?.instructor
+  const oapInstructorName = oap?.instructor
     ? [oap.instructor.title, oap.instructor.first_name, oap.instructor.last_name].filter(Boolean).join(" ").trim()
     : "";
+  const sessionInstructorName = row.instructor
+    ? [row.instructor.title, row.instructor.first_name, row.instructor.last_name].filter(Boolean).join(" ").trim()
+    : "";
+
+  const resolvedInstructorId = row.instructor_id?.toString() ?? oap?.instructor_id?.toString() ?? null;
+  const resolvedTrainer = row.instructor_name_text || sessionInstructorName || oap?.instructor_name_text || oapInstructorName || "";
+  const resolvedTelephone = row.instructor_telephone || row.instructor?.telephone || oap?.instructor_telephone || oap?.instructor?.telephone || "";
+  const resolvedEmail = row.instructor_email || row.instructor?.email || oap?.instructor_email || oap?.instructor?.email || "";
+  const resolvedEducation = row.instructor_education || row.instructor?.education || oap?.instructor_education || oap?.instructor?.education || "";
+  const resolvedOrganization = row.instructor_organization || row.instructor?.organization_name || oap?.instructor_organization || oap?.instructor?.organization_name || "";
+  const resolvedUniversity = row.instructor_university || row.instructor?.university || oap?.instructor_university || oap?.instructor?.university || "";
+  const resolvedProviderId = row.provider_id?.toString() ?? oap?.provider_id?.toString() ?? null;
+  const resolvedProvider = row.provider_name_text || row.institute_provider?.institute_provider_name || oap?.provider_name_text || oap?.institute_provider?.institute_provider_name || "";
   const start = splitDateTime(row.start_datetime);
   const end = splitDateTime(row.end_datetime);
   const hasExpenses =
@@ -271,9 +287,35 @@ const mapRollingPlan = (row: RollingPlanWithRelations) => {
     oapBudgetAccommodation: oap?.budget_accommodation?.toString() || "0",
     oapBudgetMaterial: oap?.budget_material?.toString() || "0",
     oapBudgetFoodBeverage: oap?.budget_food_beverage?.toString() || "0",
-    oapTrainer: oap?.instructor_name_text || instructorName,
+    trainer: resolvedTrainer,
+    instructorId: resolvedInstructorId,
+    instructorTelephone: resolvedTelephone,
+    instructorEmail: resolvedEmail,
+    instructorEducation: resolvedEducation,
+    instructorOrganization: resolvedOrganization,
+    instructorUniversity: resolvedUniversity,
+    provider: resolvedProvider,
+    providerId: resolvedProviderId,
+
+    sessionInstructorId: row.instructor_id?.toString() ?? null,
+    sessionTrainer: row.instructor_name_text || null,
+    sessionInstructorTelephone: row.instructor_telephone || null,
+    sessionInstructorEmail: row.instructor_email || null,
+    sessionInstructorEducation: row.instructor_education || null,
+    sessionInstructorOrganization: row.instructor_organization || null,
+    sessionInstructorUniversity: row.instructor_university || null,
+    sessionProviderId: row.provider_id?.toString() ?? null,
+    sessionProvider: row.provider_name_text || null,
+
+    oapTrainer: oap?.instructor_name_text || oapInstructorName,
     oapInstructorId: oap?.instructor_id?.toString() ?? null,
-    oapProvider: oap?.provider_name_text || "",
+    oapInstructorTelephone: oap?.instructor_telephone || oap?.instructor?.telephone || "",
+    oapInstructorEmail: oap?.instructor_email || oap?.instructor?.email || "",
+    oapInstructorEducation: oap?.instructor_education || oap?.instructor?.education || "",
+    oapInstructorOrganization: oap?.instructor_organization || oap?.instructor?.organization_name || "",
+    oapInstructorUniversity: oap?.instructor_university || oap?.instructor?.university || "",
+    oapProvider: oap?.provider_name_text || oap?.institute_provider?.institute_provider_name || "",
+    oapProviderId: oap?.provider_id?.toString() ?? null,
     owner,
     ownerCompany,
     formOverrides: {
@@ -395,6 +437,15 @@ export const createRollingPlanRepository = (client?: DatabaseClient) => {
               allow_walk_in: false,
               qr_code_token: randomUUID(),
               status: UI_STATUS_TO_DB[input.status],
+              instructor_id: safeBigInt(input.instructorId),
+              instructor_name_text: input.trainerName?.trim() || null,
+              instructor_telephone: input.instructorTelephone?.trim() || null,
+              instructor_email: input.instructorEmail?.trim() || null,
+              instructor_education: input.instructorEducation?.trim() || null,
+              instructor_organization: input.instructorOrganization?.trim() || null,
+              instructor_university: input.instructorUniversity?.trim() || null,
+              provider_id: safeBigInt(input.providerId),
+              provider_name_text: input.providerName?.trim() || null,
               // A brand-new batch is always in the future, so there is no lock to check here - the
               // guard only exists on update, where an already-started batch can be reached.
               pre_assessment_id: safeBigInt(input.formOverrides?.preAssessmentId),
@@ -640,6 +691,15 @@ const applyRemainingFields = async (
     data.end_datetime = combineDateTime(endDate, endTime);
   }
   if (input.status !== undefined) data.status = UI_STATUS_TO_DB[input.status];
+  if (input.instructorId !== undefined) data.instructor_id = safeBigInt(input.instructorId);
+  if (input.trainerName !== undefined) data.instructor_name_text = input.trainerName?.trim() || null;
+  if (input.instructorTelephone !== undefined) data.instructor_telephone = input.instructorTelephone?.trim() || null;
+  if (input.instructorEmail !== undefined) data.instructor_email = input.instructorEmail?.trim() || null;
+  if (input.instructorEducation !== undefined) data.instructor_education = input.instructorEducation?.trim() || null;
+  if (input.instructorOrganization !== undefined) data.instructor_organization = input.instructorOrganization?.trim() || null;
+  if (input.instructorUniversity !== undefined) data.instructor_university = input.instructorUniversity?.trim() || null;
+  if (input.providerId !== undefined) data.provider_id = safeBigInt(input.providerId);
+  if (input.providerName !== undefined) data.provider_name_text = input.providerName?.trim() || null;
 
   return db.training_plan.update({
     where: { plan_id: BigInt(id) },

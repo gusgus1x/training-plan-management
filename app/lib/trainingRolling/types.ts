@@ -29,9 +29,36 @@ export type RollingPlanRecord = {
   oapBudgetAccommodation: string;
   oapBudgetMaterial: string;
   oapBudgetFoodBeverage: string;
+  // Resolved instructor fields (session value if present, fallback to OAP)
+  trainer: string;
+  instructorId: string | null;
+  instructorTelephone: string;
+  instructorEmail: string;
+  instructorEducation: string;
+  instructorOrganization: string;
+  instructorUniversity: string;
+  provider: string;
+  providerId: string | null;
+  // Session direct overrides (null if not overridden)
+  sessionInstructorId?: string | null;
+  sessionTrainer?: string | null;
+  sessionInstructorTelephone?: string | null;
+  sessionInstructorEmail?: string | null;
+  sessionInstructorEducation?: string | null;
+  sessionInstructorOrganization?: string | null;
+  sessionInstructorUniversity?: string | null;
+  sessionProviderId?: string | null;
+  sessionProvider?: string | null;
+  // OAP fields for fallback reference
   oapTrainer: string;
   oapInstructorId: string | null;
+  oapInstructorTelephone?: string;
+  oapInstructorEmail?: string;
+  oapInstructorEducation?: string;
+  oapInstructorOrganization?: string;
+  oapInstructorUniversity?: string;
   oapProvider: string;
+  oapProviderId?: string | null;
   owner: WorkflowOwner;
   ownerCompany: string;
   targetSnapshot?: import("../trainingWorkflow").PlanTargetGroupSnapshot;
@@ -67,6 +94,15 @@ export type CreateRollingPlanInput = {
   startTime: string;
   endTime: string;
   status: RollingPlanStatus;
+  instructorId?: string | null;
+  trainerName?: string | null;
+  instructorTelephone?: string | null;
+  instructorEmail?: string | null;
+  instructorEducation?: string | null;
+  instructorOrganization?: string | null;
+  instructorUniversity?: string | null;
+  providerId?: string | null;
+  providerName?: string | null;
   /** Optional per-batch forms, set while creating rather than in a second edit. Omitted or empty
    *  means the batch follows the course, which is what most batches want. */
   formOverrides?: Partial<RollingPlanFormOverrides>;

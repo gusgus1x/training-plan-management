@@ -50,6 +50,7 @@ import {
   formatDateDayMonthYear,
   formatDateRangeDayMonthYear,
 } from "../../../../lib/calendarDate";
+import { extractRoundName } from "../../../../lib/batchRound";
 import {
   Search,
   ClipboardCheck,
@@ -74,6 +75,7 @@ import {
   RotateCw,
   Info,
   Lightbulb,
+  AlertTriangle,
 } from "../../../icons/LucideIcons";
 import styles from "./TrainingRolling.module.css";
 
@@ -150,7 +152,31 @@ export type RollingPlan = {
   budgetFoodBeverage: string;
   trainer: string;
   instructorId?: string | null;
+  instructorTelephone?: string;
+  instructorEmail?: string;
+  instructorEducation?: string;
+  instructorOrganization?: string;
+  instructorUniversity?: string;
   provider: string;
+  providerId?: string | null;
+  sessionInstructorId?: string | null;
+  sessionTrainer?: string | null;
+  sessionInstructorTelephone?: string | null;
+  sessionInstructorEmail?: string | null;
+  sessionInstructorEducation?: string | null;
+  sessionInstructorOrganization?: string | null;
+  sessionInstructorUniversity?: string | null;
+  sessionProviderId?: string | null;
+  sessionProvider?: string | null;
+  oapTrainer?: string;
+  oapInstructorId?: string | null;
+  oapInstructorTelephone?: string;
+  oapInstructorEmail?: string;
+  oapInstructorEducation?: string;
+  oapInstructorOrganization?: string;
+  oapInstructorUniversity?: string;
+  oapProvider?: string;
+  oapProviderId?: string | null;
   ownerName: string;
   owner: WorkflowOwner;
   // Duplicate of owner; a few legacy call sites still read ownerScope from
@@ -531,9 +557,35 @@ const mapRecordToRollingPlan = (record: RollingPlanRecord): RollingPlan => {
     budgetAccommodation: record.oapBudgetAccommodation,
     budgetMaterial: record.oapBudgetMaterial,
     budgetFoodBeverage: record.oapBudgetFoodBeverage,
-    trainer: record.oapTrainer,
-    instructorId: record.oapInstructorId ?? null,
-    provider: record.oapProvider,
+    trainer: record.trainer || record.oapTrainer || "",
+    instructorId: record.instructorId ?? record.oapInstructorId ?? null,
+    instructorTelephone: record.instructorTelephone || record.oapInstructorTelephone || "",
+    instructorEmail: record.instructorEmail || record.oapInstructorEmail || "",
+    instructorEducation: record.instructorEducation || record.oapInstructorEducation || "",
+    instructorOrganization: record.instructorOrganization || record.oapInstructorOrganization || "",
+    instructorUniversity: record.instructorUniversity || record.oapInstructorUniversity || "",
+    provider: record.provider || record.oapProvider || "",
+    providerId: record.providerId ?? record.oapProviderId ?? null,
+
+    sessionInstructorId: record.sessionInstructorId ?? null,
+    sessionTrainer: record.sessionTrainer ?? null,
+    sessionInstructorTelephone: record.sessionInstructorTelephone ?? null,
+    sessionInstructorEmail: record.sessionInstructorEmail ?? null,
+    sessionInstructorEducation: record.sessionInstructorEducation ?? null,
+    sessionInstructorOrganization: record.sessionInstructorOrganization ?? null,
+    sessionInstructorUniversity: record.sessionInstructorUniversity ?? null,
+    sessionProviderId: record.sessionProviderId ?? null,
+    sessionProvider: record.sessionProvider ?? null,
+
+    oapTrainer: record.oapTrainer,
+    oapInstructorId: record.oapInstructorId ?? null,
+    oapInstructorTelephone: record.oapInstructorTelephone || "",
+    oapInstructorEmail: record.oapInstructorEmail || "",
+    oapInstructorEducation: record.oapInstructorEducation || "",
+    oapInstructorOrganization: record.oapInstructorOrganization || "",
+    oapInstructorUniversity: record.oapInstructorUniversity || "",
+    oapProvider: record.oapProvider,
+    oapProviderId: record.oapProviderId ?? null,
     ownerName: record.createdBy,
     owner: record.owner,
     ownerScope: record.owner,
@@ -581,6 +633,15 @@ type RollingSessionForm = {
   endDate: string;
   startTime: string;
   endTime: string;
+  trainer: string;
+  instructorId: string | null;
+  instructorTelephone: string;
+  instructorEmail: string;
+  instructorEducation: string;
+  instructorOrganization: string;
+  instructorUniversity: string;
+  provider: string;
+  providerId: string | null;
   /** Per-batch forms, chosen while the batch is being created. "" follows the course. */
   formOverrides: RollingPlanFormOverrides;
 };
@@ -595,6 +656,15 @@ const createEmptySession = (
   batchNo = 1,
   batchName = "",
   batchMode: "EXISTING" | "NEW" = "NEW",
+  defaultTrainer = "",
+  defaultInstructorId: string | null = null,
+  defaultTelephone = "",
+  defaultEmail = "",
+  defaultEducation = "",
+  defaultOrganization = "",
+  defaultUniversity = "",
+  defaultProvider = "",
+  defaultProviderId: string | null = null,
 ): RollingSessionForm => ({
   id: `session-${Date.now()}-${index}`,
   dbId: null,
@@ -607,6 +677,15 @@ const createEmptySession = (
   endDate: "",
   startTime: "09:00",
   endTime: "16:00",
+  trainer: defaultTrainer,
+  instructorId: defaultInstructorId,
+  instructorTelephone: defaultTelephone,
+  instructorEmail: defaultEmail,
+  instructorEducation: defaultEducation,
+  instructorOrganization: defaultOrganization,
+  instructorUniversity: defaultUniversity,
+  provider: defaultProvider,
+  providerId: defaultProviderId,
   formOverrides: emptyFormOverrides(),
 });
 
@@ -1245,7 +1324,8 @@ export default function TrainingRolling() {
       const bNo = p.batchNo || 1;
       const entry = batchMap.get(bNo) || { batchNo: bNo, count: 0, maxRound: 0 };
       entry.count++;
-      const roundDigits = parseInt((p.batch || "").replace(/\D/g, ""), 10);
+      const roundStr = extractRoundName(p);
+      const roundDigits = parseInt(roundStr.replace(/\D/g, ""), 10);
       if (!isNaN(roundDigits) && roundDigits > entry.maxRound) {
         entry.maxRound = roundDigits;
       }
@@ -1541,6 +1621,18 @@ export default function TrainingRolling() {
     ).sort((a, b) => a - b);
     const nextBatch = existingBatches.length > 0 ? Math.max(...existingBatches) + 1 : 1;
 
+    const targetIns = targetOap?.instructorId
+      ? instructors.find((ins) => ins.instructorId === targetOap.instructorId)
+      : null;
+    const defaultTrainer = targetOap?.trainer || (targetIns ? formatInstructorFullName(targetIns) : "");
+    const defaultTelephone = targetOap?.instructorTelephone || targetIns?.telephone || "";
+    const defaultEmail = targetOap?.instructorEmail || targetIns?.email || "";
+    const defaultEducation = targetOap?.instructorEducation || targetIns?.education || "";
+    const defaultOrganization = targetOap?.instructorOrganization || targetIns?.organizationName || "";
+    const defaultUniversity = targetOap?.instructorUniversity || targetIns?.university || "";
+    const defaultProvider = targetOap?.providerName || "";
+    const defaultProviderId = targetOap?.providerId ?? null;
+
     setForm((current) => ({
       ...current,
       oapId: value,
@@ -1548,7 +1640,16 @@ export default function TrainingRolling() {
         ...session,
         batchNo: nextBatch,
         batchMode: "NEW",
-        batchName: "",
+        batchName: session.batchName || (language === "th" ? "รอบที่ 1" : "Round 1"),
+        trainer: session.trainer || defaultTrainer,
+        instructorId: session.instructorId !== null && session.instructorId !== undefined ? session.instructorId : (targetOap?.instructorId ?? null),
+        instructorTelephone: session.instructorTelephone || defaultTelephone,
+        instructorEmail: session.instructorEmail || defaultEmail,
+        instructorEducation: session.instructorEducation || defaultEducation,
+        instructorOrganization: session.instructorOrganization || defaultOrganization,
+        instructorUniversity: session.instructorUniversity || defaultUniversity,
+        provider: session.provider || defaultProvider,
+        providerId: session.providerId !== null && session.providerId !== undefined ? session.providerId : defaultProviderId,
       })),
     }));
   };
@@ -1616,6 +1717,51 @@ export default function TrainingRolling() {
       }
     });
 
+    // ตรวจสอบชื่อรอบซ้ำกันในรุ่นเดียวกัน (ทั้งในฐานข้อมูลเดิม และในฟอร์มเดียวกัน)
+    for (const session of form.sessions) {
+      const curRoundText = session.batchName.trim().toLowerCase();
+      if (!curRoundText) continue;
+      const curRoundDigits = parseInt(curRoundText.replace(/\D/g, ""), 10);
+
+      // ตรวจสอบกับรอบที่มีอยู่แล้วในระบบของ OAP นี้
+      const pastSessions = coursePlansHistory.filter(
+        (p) => (p.batchNo || 1) === session.batchNo && (!session.dbId || p.rollingId !== session.dbId)
+      );
+      const dbDup = pastSessions.find((p) => {
+        const pRoundStr = extractRoundName(p).trim().toLowerCase();
+        if (pRoundStr && pRoundStr === curRoundText) return true;
+        const pDigits = parseInt(pRoundStr.replace(/\D/g, ""), 10);
+        return !isNaN(curRoundDigits) && !isNaN(pDigits) && curRoundDigits === pDigits;
+      });
+      if (dbDup) {
+        missingFields.push(
+          t(
+            `รุ่นที่ ${session.batchNo} มีรอบ "${session.batchName.trim()}" อยู่แล้วในระบบ กรุณาใช้ชื่อรอบอื่น`,
+            `Batch ${session.batchNo} already has round "${session.batchName.trim()}" in the system. Please use a different round name.`
+          )
+        );
+      }
+
+      // ตรวจสอบกับรายการอื่นในฟอร์มเดียวกัน
+      const formDup = form.sessions.find((other) => {
+        if (other.id === session.id) return false;
+        if (other.batchNo !== session.batchNo) return false;
+        const otherRoundText = other.batchName.trim().toLowerCase();
+        if (!otherRoundText) return false;
+        if (otherRoundText === curRoundText) return true;
+        const otherDigits = parseInt(otherRoundText.replace(/\D/g, ""), 10);
+        return !isNaN(curRoundDigits) && !isNaN(otherDigits) && curRoundDigits === otherDigits;
+      });
+      if (formDup) {
+        missingFields.push(
+          t(
+            `มีรอบ "${session.batchName.trim()}" ซ้ำกันในรุ่นที่ ${session.batchNo} ของฟอร์มนี้`,
+            `Duplicate round "${session.batchName.trim()}" in batch ${session.batchNo} of this form`
+          )
+        );
+      }
+    }
+
     if (missingFields.length > 0) {
       await notice({ missingFields });
       return;
@@ -1649,6 +1795,15 @@ export default function TrainingRolling() {
           startTime: session.startTime || "09:00",
           endTime: session.endTime || "16:00",
           formOverrides: session.formOverrides,
+          instructorId: session.instructorId === "__MANUAL__" ? null : (session.instructorId || null),
+          trainerName: session.trainer?.trim() || null,
+          instructorTelephone: session.instructorTelephone?.trim() || null,
+          instructorEmail: session.instructorEmail?.trim() || null,
+          instructorEducation: session.instructorEducation?.trim() || null,
+          instructorOrganization: session.instructorOrganization?.trim() || null,
+          instructorUniversity: session.instructorUniversity?.trim() || null,
+          providerId: session.providerId || null,
+          providerName: session.provider?.trim() || null,
         };
 
         if (session.dbId) {
@@ -1685,9 +1840,25 @@ export default function TrainingRolling() {
       toast.success(
         `บันทึกแผน Rolling ${sessionCount} รุ่นแล้ว / Saved ${sessionCount} session(s)`,
       );
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to save Training Rolling plan", error);
-      toast.error("บันทึกแผน Rolling ไม่สำเร็จ / Failed to save Training Rolling plan");
+      const rawMessage = error?.message || error?.toString?.() || "";
+      const isBatchRoundDup =
+        rawMessage.includes("UQ_training_plan_oap_batch_round") ||
+        rawMessage.includes("batch_round") ||
+        rawMessage.includes("รอบการอบรมนี้มีอยู่ในระบบแล้ว") ||
+        rawMessage.includes("Batch and Round already exist");
+      const displayMessage = isBatchRoundDup
+        ? t(
+            "รุ่นและรอบการอบรมนี้มีอยู่ในระบบแล้ว กรุณาเปลี่ยนชื่อรอบหรือเลือกรุ่นอื่น",
+            "This batch and round already exist in the system. Please change the round name or choose a different batch."
+          )
+        : (rawMessage || t("บันทึกแผน Rolling ไม่สำเร็จ", "Failed to save Training Rolling plan"));
+      await notice({
+        title: t("ไม่สามารถบันทึกแผนได้", "Could not save plan"),
+        message: displayMessage,
+      });
+      toast.error(displayMessage);
     }
   };
 
@@ -1708,6 +1879,15 @@ export default function TrainingRolling() {
         endDate: p.endDate || p.trainingDate,
         startTime: p.startTime || "09:00",
         endTime: p.endTime || "16:00",
+        trainer: p.sessionTrainer ?? p.trainer ?? p.oapTrainer ?? "",
+        instructorId: p.sessionInstructorId ?? p.instructorId ?? p.oapInstructorId ?? null,
+        instructorTelephone: p.sessionInstructorTelephone ?? p.instructorTelephone ?? p.oapInstructorTelephone ?? "",
+        instructorEmail: p.sessionInstructorEmail ?? p.instructorEmail ?? p.oapInstructorEmail ?? "",
+        instructorEducation: p.sessionInstructorEducation ?? p.instructorEducation ?? p.oapInstructorEducation ?? "",
+        instructorOrganization: p.sessionInstructorOrganization ?? p.instructorOrganization ?? p.oapInstructorOrganization ?? "",
+        instructorUniversity: p.sessionInstructorUniversity ?? p.instructorUniversity ?? p.oapInstructorUniversity ?? "",
+        providerId: p.sessionProviderId ?? p.providerId ?? p.oapProviderId ?? null,
+        provider: p.sessionProvider ?? p.provider ?? p.oapProvider ?? "",
         formOverrides: p.formOverrides,
       })),
     });
@@ -1755,6 +1935,15 @@ export default function TrainingRolling() {
           endDate: plan.endDate || plan.trainingDate,
           startTime: plan.startTime,
           endTime: plan.endTime,
+          trainer: plan.sessionTrainer ?? plan.trainer ?? plan.oapTrainer ?? "",
+          instructorId: plan.sessionInstructorId ?? plan.instructorId ?? plan.oapInstructorId ?? null,
+          instructorTelephone: plan.sessionInstructorTelephone ?? plan.instructorTelephone ?? plan.oapInstructorTelephone ?? "",
+          instructorEmail: plan.sessionInstructorEmail ?? plan.instructorEmail ?? plan.oapInstructorEmail ?? "",
+          instructorEducation: plan.sessionInstructorEducation ?? plan.instructorEducation ?? plan.oapInstructorEducation ?? "",
+          instructorOrganization: plan.sessionInstructorOrganization ?? plan.instructorOrganization ?? plan.oapInstructorOrganization ?? "",
+          instructorUniversity: plan.sessionInstructorUniversity ?? plan.instructorUniversity ?? plan.oapInstructorUniversity ?? "",
+          providerId: plan.sessionProviderId ?? plan.providerId ?? plan.oapProviderId ?? null,
+          provider: plan.sessionProvider ?? plan.provider ?? plan.oapProvider ?? "",
           formOverrides: plan.formOverrides,
         },
       ],
@@ -2056,12 +2245,9 @@ export default function TrainingRolling() {
               <div className={`${styles.fullField} ${styles.sessionSection}`}>
                 <div className={styles.sectionHeader}>
                   <div>
-                    <strong>Training sessions</strong>
-                    <span>Add another session when the course has a different batch, date, time, or location.</span>
+                    <strong>{t("รอบการอบรม (Training session)", "Training session")}</strong>
+                    <span>{t("กำหนดข้อมูลรุ่น วันที่ เวลา และสถานที่สำหรับการจัดอบรม", "Specify batch, date, time, and location for this training session.")}</span>
                   </div>
-                  <button className={styles.addSessionButton} disabled={!selectedOap} type="button" onClick={addSession}>
-                    Add session
-                  </button>
                 </div>
 
                 {/* Course History Summary Banner */}
@@ -2094,13 +2280,35 @@ export default function TrainingRolling() {
                       (p) => (p.batchNo || 1) === session.batchNo && (!session.dbId || p.rollingId !== session.dbId)
                     );
                     const maxRoundInBatch = pastSessionsInBatch.reduce((max, p) => {
-                      const digits = parseInt((p.batchName || p.batch || "").replace(/\D/g, ""), 10);
+                      const rName = extractRoundName(p);
+                      const digits = parseInt(rName.replace(/\D/g, ""), 10);
                       return !isNaN(digits) && digits > max ? digits : max;
                     }, 0);
                     const suggestedRoundNum = session.batchMode === "EXISTING"
                       ? (maxRoundInBatch > 0 ? maxRoundInBatch + 1 : (pastSessionsInBatch.length + 1))
                       : 1;
                     const suggestedRoundName = language === "th" ? `รอบที่ ${suggestedRoundNum}` : `Round ${suggestedRoundNum}`;
+
+                    const curRoundText = session.batchName.trim().toLowerCase();
+                    const curRoundDigits = parseInt(curRoundText.replace(/\D/g, ""), 10);
+
+                    const duplicateExistingSession = pastSessionsInBatch.find((p) => {
+                      if (!curRoundText) return false;
+                      const pRoundStr = extractRoundName(p).trim().toLowerCase();
+                      if (pRoundStr && pRoundStr === curRoundText) return true;
+                      const pDigits = parseInt(pRoundStr.replace(/\D/g, ""), 10);
+                      return !isNaN(curRoundDigits) && !isNaN(pDigits) && curRoundDigits === pDigits;
+                    });
+
+                    const duplicateInFormSession = form.sessions.find((other) => {
+                      if (other.id === session.id) return false;
+                      if (other.batchNo !== session.batchNo) return false;
+                      const otherRoundText = other.batchName.trim().toLowerCase();
+                      if (!otherRoundText || !curRoundText) return false;
+                      if (otherRoundText === curRoundText) return true;
+                      const otherDigits = parseInt(otherRoundText.replace(/\D/g, ""), 10);
+                      return !isNaN(curRoundDigits) && !isNaN(otherDigits) && curRoundDigits === otherDigits;
+                    });
 
                     return (
                     <article className={styles.sessionCard} key={session.id}>
@@ -2141,8 +2349,21 @@ export default function TrainingRolling() {
                                 className={`${styles.modeSelectCard} ${session.batchMode === "EXISTING" ? styles.modeSelectCardActive : ""}`}
                                 onClick={() => {
                                   const firstExisting = courseExistingBatches[0];
+                                  const firstBatchNo = firstExisting?.batchNo ?? 1;
+                                  const pastInFirst = coursePlansHistory.filter(
+                                    (p) => (p.batchNo || 1) === firstBatchNo && (!session.dbId || p.rollingId !== session.dbId)
+                                  );
+                                  const maxInFirst = pastInFirst.reduce((max, p) => {
+                                    const rName = extractRoundName(p);
+                                    const digits = parseInt(rName.replace(/\D/g, ""), 10);
+                                    return !isNaN(digits) && digits > max ? digits : max;
+                                  }, 0);
+                                  const nextR = maxInFirst > 0 ? maxInFirst + 1 : (pastInFirst.length + 1);
+                                  const nextRName = language === "th" ? `รอบที่ ${nextR}` : `Round ${nextR}`;
+
                                   updateSession(session.id, "batchMode", "EXISTING");
-                                  updateSession(session.id, "batchNo", firstExisting?.batchNo ?? 1);
+                                  updateSession(session.id, "batchNo", firstBatchNo);
+                                  updateSession(session.id, "batchName", nextRName);
                                 }}
                               >
                                 <div className={styles.modeRadioCircle}>
@@ -2160,6 +2381,7 @@ export default function TrainingRolling() {
                                 onClick={() => {
                                   updateSession(session.id, "batchMode", "NEW");
                                   updateSession(session.id, "batchNo", nextNewBatchNo);
+                                  updateSession(session.id, "batchName", language === "th" ? "รอบที่ 1" : "Round 1");
                                 }}
                               >
                                 <div className={styles.modeRadioCircle}>
@@ -2188,7 +2410,19 @@ export default function TrainingRolling() {
                                   value={session.batchNo}
                                   onChange={(e) => {
                                     const selectedBatchNo = parseInt(e.target.value, 10);
+                                    const pastInBatch = coursePlansHistory.filter(
+                                      (p) => (p.batchNo || 1) === selectedBatchNo && (!session.dbId || p.rollingId !== session.dbId)
+                                    );
+                                    const maxInBatch = pastInBatch.reduce((max, p) => {
+                                      const rName = extractRoundName(p);
+                                      const digits = parseInt(rName.replace(/\D/g, ""), 10);
+                                      return !isNaN(digits) && digits > max ? digits : max;
+                                    }, 0);
+                                    const nextR = maxInBatch > 0 ? maxInBatch + 1 : (pastInBatch.length + 1);
+                                    const nextRName = language === "th" ? `รอบที่ ${nextR}` : `Round ${nextR}`;
+
                                     updateSession(session.id, "batchNo", selectedBatchNo);
+                                    updateSession(session.id, "batchName", nextRName);
                                   }}
                                 >
                                   {courseExistingBatches.map((b) => (
@@ -2262,6 +2496,22 @@ export default function TrainingRolling() {
                                 onChange={(event) => updateSession(session.id, "batchName", event.target.value)}
                               />
                             </label>
+                            {duplicateExistingSession || duplicateInFormSession ? (
+                              <div style={{ color: "#dc2626", marginTop: 6, fontSize: "0.82rem", display: "flex", alignItems: "center", gap: 6, fontWeight: 500 }}>
+                                <AlertTriangle size={14} style={{ flexShrink: 0 }} />
+                                <span>
+                                  {duplicateExistingSession
+                                    ? t(
+                                        `⚠️ ในรุ่นที่ ${session.batchNo} มีรอบ "${extractRoundName(duplicateExistingSession) || duplicateExistingSession.batchName || session.batchName.trim()}" ในระบบแล้ว กรุณาระบุรอบใหม่ (แนะนำ: ${suggestedRoundName})`,
+                                        `⚠️ Batch ${session.batchNo} already has round "${extractRoundName(duplicateExistingSession) || duplicateExistingSession.batchName || session.batchName.trim()}" in system. Please enter a different round (e.g. ${suggestedRoundName})`
+                                      )
+                                    : t(
+                                        `⚠️ มีรอบ "${session.batchName.trim()}" ซ้ำกับอีกรอบในรุ่นที่ ${session.batchNo}`,
+                                        `⚠️ Duplicate round "${session.batchName.trim()}" in batch ${session.batchNo}`
+                                      )}
+                                </span>
+                              </div>
+                            ) : null}
                           </div>
 
                           {/* Dropdown แสดงประวัติรอบที่เคยจัดมาแล้ว (ดูเฉยๆ ไม่เปลี่ยนค่าฟอร์ม) */}
@@ -2400,11 +2650,179 @@ export default function TrainingRolling() {
                         </div>
                       </div>
 
-                      {/* Per-batch forms. Left on "ใช้ตามหลักสูตร" this batch simply follows the
-                          course, which is what almost every batch wants - so the whole block is
-                          folded away until someone opens it. */}
+                      {/* 4. วิทยากรและสถาบันฝึกอบรมประจำรอบ (Session Instructor & Provider) */}
+                      <div className={styles.scheduleRowGroup}>
+                        <div className={styles.scheduleHeaderRow}>
+                          <span className={styles.compactSectionLabel}>
+                            <User size={13} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} />
+                            {t("4. วิทยากรและสถาบันฝึกอบรมประจำรอบ (Session Instructor & Provider)", "4. Session Instructor & Provider")}
+                            {session.instructorId === "__MANUAL__" ? (
+                              <em style={{ fontWeight: 600, marginLeft: 8, fontSize: "0.8rem", color: "#9333ea" }}>
+                                · {t("พิมพ์เอง (ระบุข้อมูลใหม่)", "Manual Input (New Data)")}
+                              </em>
+                            ) : session.instructorId || session.trainer ? (
+                              <em style={{ fontWeight: 400, marginLeft: 8, fontSize: "0.8rem", color: "var(--ui-30-primary, #2563eb)" }}>
+                                · {session.trainer || t("เลือกวิทยากรแล้ว", "Instructor Selected")}
+                              </em>
+                            ) : null}
+                          </span>
+                        </div>
+                        <div className={styles.scheduleGrid4}>
+                          <label className={styles.compactField}>
+                            <span className={styles.subFieldLabel}>{t("เลือกวิทยากร (จาก Master หรือพิมพ์เอง)", "Select Instructor / Mode")}</span>
+                            <select
+                              className={styles.compactInput}
+                              disabled={!selectedOap}
+                              value={
+                                session.instructorId === "__MANUAL__"
+                                  ? "__MANUAL__"
+                                  : session.instructorId && instructors.some((ins) => ins.instructorId === session.instructorId)
+                                    ? session.instructorId
+                                    : "__OAP__"
+                              }
+                              onChange={(e) => {
+                                const selectedVal = e.target.value;
+                                if (selectedVal === "__MANUAL__") {
+                                  // Clear all fields so user can type brand new data
+                                  updateSession(session.id, "instructorId", "__MANUAL__");
+                                  updateSession(session.id, "trainer", "");
+                                  updateSession(session.id, "instructorTelephone", "");
+                                  updateSession(session.id, "instructorEmail", "");
+                                  updateSession(session.id, "instructorEducation", "");
+                                  updateSession(session.id, "instructorOrganization", "");
+                                  updateSession(session.id, "instructorUniversity", "");
+                                  updateSession(session.id, "provider", "");
+                                  updateSession(session.id, "providerId", null);
+                                } else if (selectedVal === "__OAP__") {
+                                  // Re-fill with OAP defaults
+                                  const oapIns = selectedOapInstructor;
+                                  const defaultTrainer = selectedOap?.trainer || (oapIns ? formatInstructorFullName(oapIns) : "");
+                                  const defaultTelephone = selectedOap?.instructorTelephone || oapIns?.telephone || "";
+                                  const defaultEmail = selectedOap?.instructorEmail || oapIns?.email || "";
+                                  const defaultEducation = selectedOap?.instructorEducation || oapIns?.education || "";
+                                  const defaultOrganization = selectedOap?.instructorOrganization || oapIns?.organizationName || "";
+                                  const defaultUniversity = selectedOap?.instructorUniversity || oapIns?.university || "";
+                                  const defaultProvider = selectedOap?.providerName || "";
+                                  const defaultProviderId = selectedOap?.providerId ?? null;
+
+                                  updateSession(session.id, "instructorId", selectedOap?.instructorId ?? null);
+                                  updateSession(session.id, "trainer", defaultTrainer);
+                                  updateSession(session.id, "instructorTelephone", defaultTelephone);
+                                  updateSession(session.id, "instructorEmail", defaultEmail);
+                                  updateSession(session.id, "instructorEducation", defaultEducation);
+                                  updateSession(session.id, "instructorOrganization", defaultOrganization);
+                                  updateSession(session.id, "instructorUniversity", defaultUniversity);
+                                  updateSession(session.id, "provider", defaultProvider);
+                                  updateSession(session.id, "providerId", defaultProviderId);
+                                } else {
+                                  // Master instructor chosen
+                                  const ins = instructors.find((item) => item.instructorId === selectedVal);
+                                  if (ins) {
+                                    const fullName = formatInstructorFullName(ins);
+                                    updateSession(session.id, "instructorId", ins.instructorId);
+                                    updateSession(session.id, "trainer", fullName);
+                                    updateSession(session.id, "instructorTelephone", ins.telephone ?? "");
+                                    updateSession(session.id, "instructorEmail", ins.email ?? "");
+                                    updateSession(session.id, "instructorEducation", ins.education ?? "");
+                                    updateSession(session.id, "instructorOrganization", ins.organizationName ?? "");
+                                    updateSession(session.id, "instructorUniversity", ins.university ?? "");
+                                  }
+                                }
+                              }}
+                            >
+                              <option value="__OAP__">
+                                — {t("ใช้วิทยากรตามแผน OAP", "Use instructor from OAP plan")} {selectedOap?.trainer ? `(${selectedOap.trainer})` : ""} —
+                              </option>
+                              <option value="__MANUAL__">
+                                ✍️ {t("พิมพ์เอง (ล้างข้อมูลเดิมเพื่อระบุใหม่)", "Enter manually (Clear to enter new)")}
+                              </option>
+                              <optgroup label={t("เลือกจากรายชื่อวิทยากร (Master Data)", "Select from Master Data")}>
+                                {instructors.map((ins) => (
+                                  <option key={ins.instructorId} value={ins.instructorId}>
+                                    [{ins.instructorCode}] {formatInstructorFullName(ins)}
+                                  </option>
+                                ))}
+                              </optgroup>
+                            </select>
+                          </label>
+                          <label className={styles.compactField}>
+                            <span className={styles.subFieldLabel}>{t("ชื่อวิทยากร (Trainer / Speaker)", "Trainer Name")}</span>
+                            <input
+                              disabled={!selectedOap}
+                              className={styles.compactInput}
+                              placeholder={session.instructorId === "__MANUAL__" ? t("ระบุชื่อวิทยากรใหม่", "Enter trainer name") : (selectedOap?.trainer || t("ระบุชื่อวิทยากร", "Trainer name"))}
+                              value={session.trainer}
+                              onChange={(e) => updateSession(session.id, "trainer", e.target.value)}
+                            />
+                          </label>
+                          <label className={styles.compactField}>
+                            <span className={styles.subFieldLabel}>{t("เบอร์โทรศัพท์ (Telephone)", "Telephone")}</span>
+                            <input
+                              disabled={!selectedOap}
+                              className={styles.compactInput}
+                              placeholder={session.instructorId === "__MANUAL__" ? "08x-xxx-xxxx" : (selectedOap?.instructorTelephone || "08x-xxx-xxxx")}
+                              value={session.instructorTelephone}
+                              onChange={(e) => updateSession(session.id, "instructorTelephone", e.target.value)}
+                            />
+                          </label>
+                          <label className={styles.compactField}>
+                            <span className={styles.subFieldLabel}>{t("อีเมล (Email)", "Email")}</span>
+                            <input
+                              disabled={!selectedOap}
+                              className={styles.compactInput}
+                              placeholder={session.instructorId === "__MANUAL__" ? "instructor@example.com" : (selectedOap?.instructorEmail || "instructor@example.com")}
+                              value={session.instructorEmail}
+                              onChange={(e) => updateSession(session.id, "instructorEmail", e.target.value)}
+                            />
+                          </label>
+                        </div>
+                        <div className={styles.scheduleGrid4} style={{ marginTop: 8 }}>
+                          <label className={styles.compactField}>
+                            <span className={styles.subFieldLabel}>{t("สถาบัน / ผู้ให้บริการ (Provider)", "Provider")}</span>
+                            <input
+                              disabled={!selectedOap}
+                              className={styles.compactInput}
+                              placeholder={session.instructorId === "__MANUAL__" ? t("ระบุสถาบันฝึกอบรม", "Enter provider name") : (selectedOap?.providerName || t("สถาบันฝึกอบรม", "Training Provider"))}
+                              value={session.provider}
+                              onChange={(e) => updateSession(session.id, "provider", e.target.value)}
+                            />
+                          </label>
+                          <label className={styles.compactField}>
+                            <span className={styles.subFieldLabel}>{t("วุฒิการศึกษา (Education)", "Education")}</span>
+                            <input
+                              disabled={!selectedOap}
+                              className={styles.compactInput}
+                              placeholder={session.instructorId === "__MANUAL__" ? t("ระบุวุฒิการศึกษา", "Enter education") : (selectedOap?.instructorEducation || "-")}
+                              value={session.instructorEducation}
+                              onChange={(e) => updateSession(session.id, "instructorEducation", e.target.value)}
+                            />
+                          </label>
+                          <label className={styles.compactField}>
+                            <span className={styles.subFieldLabel}>{t("หน่วยงาน / สังกัด (Organization)", "Organization")}</span>
+                            <input
+                              disabled={!selectedOap}
+                              className={styles.compactInput}
+                              placeholder={session.instructorId === "__MANUAL__" ? t("ระบุหน่วยงาน/สังกัด", "Enter organization") : (selectedOap?.instructorOrganization || "-")}
+                              value={session.instructorOrganization}
+                              onChange={(e) => updateSession(session.id, "instructorOrganization", e.target.value)}
+                            />
+                          </label>
+                          <label className={styles.compactField}>
+                            <span className={styles.subFieldLabel}>{t("มหาวิทยาลัย (University)", "University")}</span>
+                            <input
+                              disabled={!selectedOap}
+                              className={styles.compactInput}
+                              placeholder={session.instructorId === "__MANUAL__" ? t("ระบุมหาวิทยาลัย", "Enter university") : (selectedOap?.instructorUniversity || "-")}
+                              value={session.instructorUniversity}
+                              onChange={(e) => updateSession(session.id, "instructorUniversity", e.target.value)}
+                            />
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Per-batch forms. Open by default so user sees test/evaluation stage choices immediately */}
                       {selectedOap ? (
-                        <details className={styles.sessionFormOverrides}>
+                        <details open className={styles.sessionFormOverrides}>
                           <summary>
                             <ClipboardCheck size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
                             {" "}{t("แบบทดสอบ / แบบประเมินของรุ่นนี้", "Session Test / Evaluation Forms")}
@@ -2609,7 +3027,7 @@ export default function TrainingRolling() {
                         </strong>
                         {Number(selectedOap.participants) > 0 && Number(selectedOap.budget) > 0 ? (
                           <span className={styles.previewBudgetPerHead}>
-                            (~฿{Math.round(Number(selectedOap.budget) / Number(selectedOap.participants)).toLocaleString("en-US")} / " + t("ท่าน", "seat") + ")
+                            (~฿{Math.round(Number(selectedOap.budget) / Number(selectedOap.participants)).toLocaleString("en-US")} / {t("ท่าน", "seat")})
                           </span>
                         ) : null}
                       </span>
@@ -3186,11 +3604,11 @@ export default function TrainingRolling() {
                     {matchedRollingInstructor?.instructorCode ? (
                       <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("รหัสวิทยากร", "Instructor Code")}</span><span className={styles.previewFieldValue}>{matchedRollingInstructor.instructorCode}</span></div>
                     ) : null}
-                    <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("มหาวิทยาลัย", "University")}</span><span className={styles.previewFieldValue}>{matchedRollingInstructor?.university || "-"}</span></div>
-                    <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("วุฒิการศึกษา", "Education")}</span><span className={styles.previewFieldValue}>{matchedRollingInstructor?.education || "-"}</span></div>
-                    <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("หน่วยงาน / สังกัด", "Organization")}</span><span className={styles.previewFieldValue}>{matchedRollingInstructor?.organizationName || "-"}</span></div>
-                    <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("เบอร์โทรศัพท์", "Telephone")}</span><span className={styles.previewFieldValue}>{matchedRollingInstructor?.telephone || "-"}</span></div>
-                    <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("อีเมล", "Email")}</span><span className={styles.previewFieldValue}>{matchedRollingInstructor?.email || "-"}</span></div>
+                    <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("มหาวิทยาลัย", "University")}</span><span className={styles.previewFieldValue}>{plan.instructorUniversity || matchedRollingInstructor?.university || "-"}</span></div>
+                    <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("วุฒิการศึกษา", "Education")}</span><span className={styles.previewFieldValue}>{plan.instructorEducation || matchedRollingInstructor?.education || "-"}</span></div>
+                    <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("หน่วยงาน / สังกัด", "Organization")}</span><span className={styles.previewFieldValue}>{plan.instructorOrganization || matchedRollingInstructor?.organizationName || "-"}</span></div>
+                    <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("เบอร์โทรศัพท์", "Telephone")}</span><span className={styles.previewFieldValue}>{plan.instructorTelephone || matchedRollingInstructor?.telephone || "-"}</span></div>
+                    <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("อีเมล", "Email")}</span><span className={styles.previewFieldValue}>{plan.instructorEmail || matchedRollingInstructor?.email || "-"}</span></div>
                     <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("ผู้ให้บริการ", "Provider")}</span><span className={styles.previewFieldValue}>{plan.provider || "-"}</span></div>
                   </div>
 

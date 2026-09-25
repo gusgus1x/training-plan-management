@@ -50,6 +50,11 @@ export const parseCreateOapPlan = (input: InputObject): CreateOapPlanInput => ({
   budgetFoodBeverage: cleanBudgetString(input.budgetFoodBeverage),
   trainerName: readOptionalString(input, "trainerName", { maxLength: NAME_TEXT_MAX_LENGTH }) || "",
   instructorId: readOptionalString(input, "instructorId"),
+  instructorTelephone: readOptionalString(input, "instructorTelephone", { maxLength: 50 }) || "",
+  instructorEmail: readOptionalString(input, "instructorEmail", { maxLength: 255 }) || "",
+  instructorEducation: readOptionalString(input, "instructorEducation", { maxLength: 500 }) || "",
+  instructorOrganization: readOptionalString(input, "instructorOrganization", { maxLength: 255 }) || "",
+  instructorUniversity: readOptionalString(input, "instructorUniversity", { maxLength: 255 }) || "",
   providerName: readOptionalString(input, "providerName", { maxLength: NAME_TEXT_MAX_LENGTH }) || "",
   providerId: readOptionalString(input, "providerId"),
   status: status(input.status, "Planning"),
@@ -70,6 +75,11 @@ export const parseUpdateOapPlan = (input: InputObject): UpdateOapPlanInput => {
   if (hasOwn(input, "budgetFoodBeverage")) update.budgetFoodBeverage = cleanBudgetString(input.budgetFoodBeverage);
   if (hasOwn(input, "trainerName")) update.trainerName = readOptionalString(input, "trainerName", { maxLength: NAME_TEXT_MAX_LENGTH }) || "";
   if (hasOwn(input, "instructorId")) update.instructorId = readOptionalString(input, "instructorId");
+  if (hasOwn(input, "instructorTelephone")) update.instructorTelephone = readOptionalString(input, "instructorTelephone", { maxLength: 50 }) || "";
+  if (hasOwn(input, "instructorEmail")) update.instructorEmail = readOptionalString(input, "instructorEmail", { maxLength: 255 }) || "";
+  if (hasOwn(input, "instructorEducation")) update.instructorEducation = readOptionalString(input, "instructorEducation", { maxLength: 500 }) || "";
+  if (hasOwn(input, "instructorOrganization")) update.instructorOrganization = readOptionalString(input, "instructorOrganization", { maxLength: 255 }) || "";
+  if (hasOwn(input, "instructorUniversity")) update.instructorUniversity = readOptionalString(input, "instructorUniversity", { maxLength: 255 }) || "";
   if (hasOwn(input, "providerName")) update.providerName = readOptionalString(input, "providerName", { maxLength: NAME_TEXT_MAX_LENGTH }) || "";
   if (hasOwn(input, "providerId")) update.providerId = readOptionalString(input, "providerId");
   if (hasOwn(input, "status")) update.status = status(input.status);
