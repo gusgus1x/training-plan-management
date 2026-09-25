@@ -1420,7 +1420,7 @@ export default function ScheduleCalendar({
                                   if (onNavigateRegister) {
                                     onNavigateRegister();
                                   } else {
-                                    router.push("/?module=register");
+                                    router.push("/employee/register");
                                   }
                                 }}
                                 title={uiLang === "th" ? "กดเพื่อสมัครเข้าอบรมหลักสูตรนี้" : "Register for this course"}
@@ -1754,7 +1754,7 @@ export default function ScheduleCalendar({
                                       if (onNavigateRegister) {
                                         onNavigateRegister();
                                       } else {
-                                        router.push("/?module=register");
+                                        router.push("/employee/register");
                                       }
                                     }}
                                     title={uiLang === "th" ? "กดเพื่อสมัครเข้าอบรมหลักสูตรนี้" : "Register for this course"}

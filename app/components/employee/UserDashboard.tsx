@@ -20,6 +20,7 @@ import {
   moduleCards,
   type UserModule,
 } from "./data";
+import { employeePath, isUserModule } from "./employeePaths";
 import {
   getRollingPlanCompanies,
   loadWorkflowRollingPlans,
@@ -123,6 +124,9 @@ const moduleIconMap: Record<UserModule, React.ReactNode> = {
 };
 
 type UserDashboardProps = {
+  /** From the path: /employee/<module>[/<sub>]. Null is the dashboard home. */
+  module?: UserModule | null;
+  sub?: string | null;
   username: string;
   onHome: () => void;
   onLogout: () => void;
@@ -355,7 +359,7 @@ export const resolveCompany = (
 
 export { certificatesOf, pendingFollowUpEvaluationsOf } from "./employeeNotices";
 
-export default function UserDashboard({ username, onHome, onLogout }: UserDashboardProps) {
+export default function UserDashboard({ module = null, sub = null, username, onHome, onLogout }: UserDashboardProps) {
   const authenticatedUser = useAuthenticatedUser();
   const { language } = useUiLanguage();
   const isThai = language === "th";
@@ -485,25 +489,27 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
   ]);
   const searchParams = useSearchParams();
   const router = useRouter();
-  // Read once, as the initial value only - a page returning from /training-form links back to
-  // "/?module=record" so the employee lands on My Record instead of the bare dashboard home.
-  // Switching modules afterward does not sync back into the URL; this only covers the return trip.
-  const [activeModule, setActiveModule] = useState<UserModule | null>(() => {
-    const requested = searchParams.get("module");
-    return moduleCards.some((module) => module.key === requested) ? (requested as UserModule) : null;
-  });
-  // A notice (dashboard card or navbar bell) pushes "/?module=record&...&at=<now>" while this page
-  // is already mounted, so the initial read above is not enough. `at` changes on every click.
-  const requestedModule = searchParams.get("module");
-  const requestedAt = searchParams.get("at");
-  const [handledAt, setHandledAt] = useState(requestedAt);
-  if (requestedAt !== handledAt) {
-    setHandledAt(requestedAt);
-    if (moduleCards.some((module) => module.key === requestedModule)) setActiveModule(requestedModule as UserModule);
-  }
+  // Each module has its own address (/employee/<module>), so refresh, Back and bookmarks work.
+  const activeModule = module;
+  const setActiveModule = (next: UserModule | null) => router.push(employeePath(next));
+  // "Ask for a refresher of this course" carries the course in the address, not in state, so it
+  // survives the move to the Request page.
+  const openRequestFor = (courseId: string) => router.push(employeePath("request", null, { courseId }));
+  const requestCourseId = activeModule === "request" ? (searchParams.get("courseId") ?? "") : "";
+
+  // Links written before paths existed ("/?module=record&tab=..."), from an old bookmark or a
+  // notification row, are forwarded to the path once.
+  const legacyModule = searchParams.get("module");
+  useEffect(() => {
+    if (activeModule || !isUserModule(legacyModule)) return;
+    const rest = Object.fromEntries(searchParams.entries());
+    const tab = rest.tab;
+    delete rest.module;
+    delete rest.tab;
+    router.replace(employeePath(legacyModule, legacyModule === "record" ? tab : null, rest));
+  }, [activeModule, legacyModule, searchParams, router]);
   const [trainingNeed, setTrainingNeed] = useState("");
   const [reason, setReason] = useState("");
-  const [requestCourseId, setRequestCourseId] = useState("");
   const [calendarToday] = useState(getCurrentCalendarDate);
   const [selectedCalendarYear, setSelectedCalendarYear] = useState(
     calendarToday.year,
@@ -758,11 +764,8 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
           ) : null}
           {activeModule === "roadmap" ? (
             <RoadmapModule
-              onRequestRefresher={(recordId) => {
-                setRequestCourseId(recordId);
-                setActiveModule("request");
-              }}
-              onNavigate={(mod) => setActiveModule(mod as any)}
+              onRequestRefresher={openRequestFor}
+              onNavigate={(mod) => setActiveModule(mod as UserModule)}
             />
           ) : null}
           {activeModule === "request" ? (
@@ -772,16 +775,11 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
               setTrainingNeed={setTrainingNeed}
               trainingNeed={trainingNeed}
               initialCourseId={requestCourseId}
-              onNavigate={(mod) => setActiveModule(mod as any)}
+              onNavigate={(mod) => setActiveModule(mod as UserModule)}
             />
           ) : null}
           {activeModule === "record" ? (
-            <RecordModule
-              onRequestRefresher={(record) => {
-                setRequestCourseId(record.id);
-                setActiveModule("request");
-              }}
-            />
+            <RecordModule tab={sub} onRequestRefresher={(record) => openRequestFor(record.id)} />
           ) : null}
           {activeModule === "calendar" ? (
             <CalendarModule

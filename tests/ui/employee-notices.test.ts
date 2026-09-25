@@ -70,7 +70,7 @@ describe("which notices an employee gets", () => {
   it("raises a forms notice pointing at the completed tab", () => {
     const notices = buildEmployeeNotices([enrollment({}, openPostTest)], undefined, undefined, new Date(T0));
     expect(notices.map((notice) => notice.id)).toEqual(["forms:e1:post"]);
-    expect(noticeHref(notices[0], 5)).toBe("/?module=record&tab=completed&focus=e1&at=5");
+    expect(noticeHref(notices[0], 5)).toBe("/employee/record/completed?focus=e1&at=5");
   });
 
   it("leaves a certificate to the notification table, which is told when HRD issues it", () => {
@@ -88,7 +88,7 @@ describe("which notices an employee gets", () => {
     expect(notices).toHaveLength(1);
     expect(notices[0].id).toBe("enrollment_approval:enr-999");
     expect(notices[0].kind).toBe("enrollment_approval");
-    expect(noticeHref(notices[0], 100)).toBe("/?module=register&focusApproval=enr-999&at=100");
+    expect(noticeHref(notices[0], 100)).toBe("/employee/register?focusApproval=enr-999&at=100");
   });
 
   // Rows of the notification table are read by useStoredNotifications, not listed here, and land
@@ -104,7 +104,7 @@ describe("which notices an employee gets", () => {
       isRead: false,
       createdAt: new Date().toISOString(),
     };
-    expect(storedHref(row, 200)).toBe("/?module=record&tab=pending&focus=123&at=200");
+    expect(storedHref(row, 200)).toBe("/employee/record/pending?focus=123&at=200");
   });
 });
 

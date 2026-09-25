@@ -26,6 +26,12 @@ describe("isEmployeeAllowedPath", () => {
     expect(isEmployeeAllowedPath("/")).toBe(true);
   });
 
+  it("allows every employee screen path, but not a look-alike prefix", () => {
+    expect(isEmployeeAllowedPath("/employee/register")).toBe(true);
+    expect(isEmployeeAllowedPath("/employee/record/completed")).toBe(true);
+    expect(isEmployeeAllowedPath("/employeex")).toBe(false);
+  });
+
   it("allows a training-form page and its sub-paths", () => {
     expect(isEmployeeAllowedPath("/training-form/1/PRE_TEST")).toBe(true);
     expect(isEmployeeAllowedPath("/training-form")).toBe(true);

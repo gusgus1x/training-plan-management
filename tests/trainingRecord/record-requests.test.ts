@@ -201,7 +201,7 @@ describe("Training Record Requests Notification Integration", () => {
     expect(textTh.detail).toContain("TRR-202609-000101");
 
     const href = noticeHref(notice, 123456);
-    expect(href).toBe("/?module=record&tab=download&focusRequest=req-101&at=123456");
+    expect(href).toBe("/employee/record/download?focusRequest=req-101&at=123456");
   });
 
   // The decision is news written to the notification table when the head decides; the bell reads
@@ -220,10 +220,10 @@ describe("Training Record Requests Notification Integration", () => {
       createdAt: "2026-09-21T03:00:00.000Z",
     });
     expect(storedHref(row("TRAINING_RECORD_REQUEST_APPROVED", "req-102"), 999999)).toBe(
-      "/?module=record&tab=download&downloadReq=req-102&at=999999",
+      "/employee/record/download?downloadReq=req-102&at=999999",
     );
     expect(storedHref(row("TRAINING_RECORD_REQUEST_REJECTED", "req-103"), 888888)).toBe(
-      "/?module=record&tab=download&focusRequest=req-103&at=888888",
+      "/employee/record/download?focusRequest=req-103&at=888888",
     );
   });
 });

@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { employeePath } from "./employeePaths";
 import { useRouter } from "next/navigation";
 import { useConfirm } from "../ConfirmDialog";
 import { useToast } from "../ToastHost";
@@ -298,7 +299,7 @@ export default function TrainingFormRunner({ enrollmentId, stage: rawStage }: Tr
 
   // Back to the course card the form was opened from. Someone with no enrollment of their own on
   // the course (a supervisor answering a 30-day follow-up) just lands on My Record.
-  const [backHref, setBackHref] = useState("/?module=record");
+  const [backHref, setBackHref] = useState(employeePath("record"));
   const goBackToRecord = () => router.push(backHref);
 
   useEffect(() => {

@@ -21,6 +21,8 @@ export const shouldRedirectToLogin = (
  */
 const EMPLOYEE_ALLOWED_BASE_PATHS = [
   "/",
+  // Every employee screen: /employee/<module>[/<tab>].
+  "/employee",
   "/training-form",
   "/training-plan/training-accept-survey",
 ];

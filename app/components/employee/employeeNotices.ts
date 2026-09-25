@@ -1,4 +1,5 @@
 import { followUpReminderAt } from "../../lib/trainingForms/availability";
+import { employeePath } from "./employeePaths";
 import type { EnrollmentRecord } from "../../lib/trainingEnrollment/types";
 import { outstandingStageKeys, STAGE_LABELS_EN, STAGE_LABELS_TH } from "./RecordModule";
 
@@ -220,12 +221,12 @@ export const unreadCount = (notices: EmployeeNotice[], state: NoticeState) =>
  *  count as a new navigation. */
 export const noticeHref = (notice: EmployeeNotice, now = Date.now()) => {
   if (notice.kind === "record_request_approval") {
-    return `/?module=record&tab=download&focusRequest=${encodeURIComponent(notice.request.id)}&at=${now}`;
+    return employeePath("record", "download", { focusRequest: notice.request.id, at: now });
   }
   if (notice.kind === "enrollment_approval") {
-    return `/?module=register&focusApproval=${encodeURIComponent(notice.enrollment.id)}&at=${now}`;
+    return employeePath("register", null, { focusApproval: notice.enrollment.id, at: now });
   }
-  return `/?module=record&tab=${notice.tab}&focus=${encodeURIComponent(notice.enrollmentId)}&at=${now}`;
+  return employeePath("record", notice.tab, { focus: notice.enrollmentId, at: now });
 };
 
 // ---- Persistence ----------------------------------------------------------------------------

@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { employeePath, isRecordTab, type RecordTab } from "./employeePaths";
 import { useRealtime } from "../useRealtime";
 import { useRouter, useSearchParams } from "next/navigation";
 import { certificateFileUrl } from "../../lib/certificates/client";
@@ -552,10 +553,12 @@ const exportPersonalRecord = (
 };
 
 type RecordModuleProps = {
+  /** From the path, /employee/record/<tab>; anything else opens the first tab. */
+  tab?: string | null;
   onRequestRefresher?: (record: EmployeeTrainingRecord) => void;
 };
 
-export default function RecordModule({ onRequestRefresher }: RecordModuleProps = {}) {
+export default function RecordModule({ tab = null, onRequestRefresher }: RecordModuleProps = {}) {
   const { language } = useUiLanguage();
   const isThai = language === "th";
   const t = (th: string, en: string) => (isThai ? th : en);
@@ -568,7 +571,9 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
   const employeeCompany = profileValue(authenticatedUser?.companyCode);
   const toast = useToast();
 
-  const [activeTab, setActiveTab] = useState<"pending" | "completed" | "download">("pending");
+  // The tab is part of the address, so Back and refresh keep it.
+  const activeTab: RecordTab = isRecordTab(tab) ? tab : "pending";
+  const setActiveTab = (next: RecordTab) => router.push(employeePath("record", next));
   const [enrollments, setEnrollments] = useState<EnrollmentRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -597,11 +602,7 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
 
   if ((focusId || focusRequest || downloadReq || focusTab) && focusAt && focusAt !== handledFocusAt) {
     setHandledFocusAt(focusAt);
-    if (focusTab === "download" || focusRequest || downloadReq) {
-      setActiveTab("download");
-    } else if (focusTab === "completed" || focusTab === "pending") {
-      setActiveTab(focusTab);
-    }
+    // The tab itself comes from the path the notice linked to.
     setQuery("");
     setSelectedProvider("all");
     if (focusId) {

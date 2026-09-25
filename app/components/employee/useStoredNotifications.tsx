@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { employeePath } from "./employeePaths";
 import { listNotifications, markNotificationsAsRead } from "../../lib/notifications/client";
 import type { NotificationRecord } from "../../lib/notifications/types";
 import { useRealtime } from "../useRealtime";
@@ -67,13 +68,12 @@ export function useStoredNotifications() {
 /** Where a row lands when opened. Types with nowhere useful to go return null. */
 export const storedHref = (row: NotificationRecord, now = Date.now()) => {
   const type = row.relatedType ?? "";
-  const id = row.relatedId ? encodeURIComponent(row.relatedId) : null;
-  if (type.startsWith("NEED_REQUEST_")) return `/?module=request&at=${now}`;
-  if (type === "TRAINING_RECORD_REQUEST_APPROVED" && id) return `/?module=record&tab=download&downloadReq=${id}&at=${now}`;
-  if (type === "TRAINING_RECORD_REQUEST_REJECTED" && id) return `/?module=record&tab=download&focusRequest=${id}&at=${now}`;
+  if (type.startsWith("NEED_REQUEST_")) return employeePath("request", null, { at: now });
+  if (type === "TRAINING_RECORD_REQUEST_APPROVED" && row.relatedId) return employeePath("record", "download", { downloadReq: row.relatedId, at: now });
+  if (type === "TRAINING_RECORD_REQUEST_REJECTED" && row.relatedId) return employeePath("record", "download", { focusRequest: row.relatedId, at: now });
   // related_id is the certificate file (the dashboard card previews it), not the enrollment.
-  if (type === "CERTIFICATE_ISSUED") return `/?module=record&tab=completed&at=${now}`;
-  if (type.startsWith("ENROLLMENT_") && id) return `/?module=record&tab=pending&focus=${id}&at=${now}`;
-  if (type.startsWith("PLAN_") || type === "REVIEWER_ASSIGNED") return `/?module=record&at=${now}`;
+  if (type === "CERTIFICATE_ISSUED") return employeePath("record", "completed", { at: now });
+  if (type.startsWith("ENROLLMENT_") && row.relatedId) return employeePath("record", "pending", { focus: row.relatedId, at: now });
+  if (type.startsWith("PLAN_") || type === "REVIEWER_ASSIGNED") return employeePath("record", null, { at: now });
   return null;
 };
