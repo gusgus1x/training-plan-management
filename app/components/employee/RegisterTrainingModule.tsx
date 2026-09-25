@@ -217,9 +217,11 @@ const isPlanRelevantForEmployeeCompany = (plan: RollingPlan, empCompany: string)
   const planOwnerComp = (plan.ownerCompany || plan.company || "").trim().toUpperCase();
   if (planOwnerComp === normEmpComp) return true;
 
+  const snapshotCompanies = plan.targetSnapshot?.targetCompanies || [];
+  const relComps = snapshotCompanies.length > 0 ? snapshotCompanies : (plan.relatedCompanies || []);
+
   // 2. Plan belongs to Center and targets employee's company or All
   if (plan.owner === "CENTER") {
-    const relComps = plan.relatedCompanies || [];
     if (relComps.length === 0) return true; // Unrestricted Center course
     return relComps.some((c) => {
       const normC = c.trim().toUpperCase();
@@ -227,8 +229,7 @@ const isPlanRelevantForEmployeeCompany = (plan: RollingPlan, empCompany: string)
     });
   }
 
-  // 3. Plan is a Factory plan that lists employee's company in relatedCompanies
-  const relComps = plan.relatedCompanies || [];
+  // 3. Plan is a Factory plan that lists employee's company in relatedCompanies or targetSnapshot
   return relComps.some((c) => {
     const normC = c.trim().toUpperCase();
     return normC === "ALL" || normC === "ALL COMPANIES" || normC === normEmpComp;

@@ -22,7 +22,12 @@ import {
 import { useToast } from "../ToastHost";
 import { buildRecords, type EmployeeTrainingRecord } from "./RecordModule";
 import { profileValue, useAuthenticatedUser } from "../AuthenticatedUserContext";
-import { loadWorkflowRollingPlans, type RollingPlan } from "../center_factory/TrainingPlanManagement/modules/TrainingRolling";
+import {
+  loadWorkflowRollingPlans,
+  resolveRollingPlanStandard,
+  type RollingPlan,
+} from "../center_factory/TrainingPlanManagement/modules/TrainingRolling";
+import { normalizeEmployeeLevel } from "../../lib/employeeMasterData";
 import { useUiLanguage } from "../ThaiUiLocalization";
 import ModuleHeader from "./ModuleHeader";
 import SearchableApproverSelect from "./SearchableApproverSelect";
@@ -129,54 +134,38 @@ const normalizeLevel = (val: string): string => {
 // Normalize Position names for matching
 const normalizePosition = (val: string): string => {
   if (!val) return "";
-  const t = val.trim();
-  // Check specific management & supervisory positions first before general "manager"
-  if (/general\s*manager|ผู้จัดการทั่วไป|ผู้จัดการฝ่าย|gm\b/i.test(t)) return "GENERAL MANAGER";
-  if (/assistant\s*manager|asst\.?\s*manager|ผู้ช่วยผู้จัดการ/i.test(t)) return "ASSISTANT MANAGER";
-  if (/plant\s*manager|ผู้จัดการโรงงาน/i.test(t)) return "PLANT MANAGER";
-  if (/section\s*head|หัวหน้างาน|หัวหน้าแผนก|ผู้จัดการแผนก|supervisor/i.test(t)) return "SECTION HEAD";
-  if (/senior\s*foreman|หัวหน้าชุดอาวุโส/i.test(t)) return "SENIOR FOREMAN";
-  if (/foreman|หัวหน้าชุด/i.test(t)) return "FOREMAN";
-  if (/leader|หัวหน้ากลุ่ม|หัวหน้ากะ/i.test(t)) return "LEADER";
-  if (/manager|ผู้จัดการ/i.test(t)) return "MANAGER";
-  if (/officer|เจ้าหน้าที่/i.test(t)) return "OFFICER";
-  if (/engineer|วิศวกร/i.test(t)) return "ENGINEER";
-  if (/technician|ช่างเทคนิค|ช่าง/i.test(t)) return "TECHNICIAN";
-  if (/staff|พนักงาน/i.test(t)) return "STAFF";
-  if (/president|ประธาน/i.test(t)) return "PRESIDENT";
-  if (/vice\s*president|รองประธาน/i.test(t)) return "VICE PRESIDENT";
-  if (/advisor|ที่ปรึกษา/i.test(t)) return "ADVISOR";
-  return t.toUpperCase();
+  const t = val.trim().toLowerCase().replace(/[\.\-_]/g, " ").replace(/\s+/g, " ");
+  if (/general\s*manager|ผู้จัดการทั่วไป|ผู้จัดการฝ่าย|gm\b/.test(t)) return "general manager";
+  if (/assistant\s*manager|asst\s*manager|ผู้ช่วยผู้จัดการ/.test(t)) return "assistant manager";
+  if (/plant\s*manager|ผู้จัดการโรงงาน/.test(t)) return "plant manager";
+  if (/section\s*head|หัวหน้างาน|หัวหน้าแผนก|ผู้จัดการแผนก|supervisor|sh\b/.test(t)) return "section head";
+  if (/senior\s*foreman|หัวหน้าชุดอาวุโส/.test(t)) return "senior foreman";
+  if (/foreman|หัวหน้าชุด|force\s*man/.test(t)) return "foreman";
+  if (/leader|หัวหน้ากลุ่ม|หัวหน้ากะ/.test(t)) return "leader";
+  if (/manager|ผู้จัดการ/.test(t)) return "manager";
+  if (/officer|เจ้าหน้าที่|office\b/.test(t)) return "officer";
+  if (/engineer|วิศวกร/.test(t)) return "engineer";
+  if (/technician|ช่างเทคนิค|ช่าง/.test(t)) return "technician";
+  if (/operator|พนักงานปฏิบัติการ|คนงาน/.test(t)) return "operator";
+  if (/staff|พนักงาน/.test(t)) return "staff";
+  if (/president|ประธาน/.test(t)) return "president";
+  if (/vice\s*president|รองประธาน/.test(t)) return "vice president";
+  if (/advisor|ที่ปรึกษา/.test(t)) return "advisor";
+  return t;
 };
 
-// Helper function to check if a value matches target checklist (strictly matching user's position, level, or function)
+// Helper function to check if a value matches target checklist (strictly matching user's position or level)
 const isTargetMatch = (
   targets: readonly string[] | undefined,
   userValues: string | string[],
   isLevel = false,
   isPosition = false,
-  targetGroupText?: string,
 ) => {
   const userVals = (Array.isArray(userValues) ? userValues : [userValues])
     .map((v) => (v || "").trim())
     .filter((v) => v && v !== "-");
 
   if (userVals.length === 0) return false;
-
-  // 1. Check if rolling plan / course targetGroup description mentions this position or user value
-  if (targetGroupText && targetGroupText.trim() && targetGroupText !== "-") {
-    const normGroupText = targetGroupText.trim().toLowerCase();
-    for (const uv of userVals) {
-      const normUv = isPosition ? normalizePosition(uv).toLowerCase() : uv.toLowerCase();
-      if (
-        normGroupText.includes(uv.toLowerCase()) ||
-        (normUv && normGroupText.includes(normUv))
-      ) {
-        return true;
-      }
-    }
-  }
-
   if (!targets || targets.length === 0) return false;
 
   return targets.some((target) => {
@@ -200,22 +189,21 @@ const isTargetMatch = (
     }
 
     const targetNorm = isLevel
-      ? normalizeLevel(target)
+      ? normalizeEmployeeLevel(target)
       : isPosition
       ? normalizePosition(target)
       : target.trim().toLowerCase();
 
     return userVals.some((rawUser) => {
       const normalizedUser = isLevel
-        ? normalizeLevel(rawUser)
+        ? normalizeEmployeeLevel(rawUser)
         : isPosition
         ? normalizePosition(rawUser)
         : rawUser.trim().toLowerCase();
 
       return (
-        targetNorm === normalizedUser ||
-        targetNorm.includes(normalizedUser) ||
-        normalizedUser.includes(targetNorm) ||
+        Boolean(targetNorm && normalizedUser && targetNorm === normalizedUser) ||
+        Boolean(targetNorm && normalizedUser && (targetNorm.includes(normalizedUser) || normalizedUser.includes(targetNorm))) ||
         target.trim().toLowerCase() === rawUser.trim().toLowerCase() ||
         target.trim().toLowerCase().includes(rawUser.trim().toLowerCase()) ||
         rawUser.trim().toLowerCase().includes(target.trim().toLowerCase())
@@ -272,7 +260,10 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
   const employeeFunction = profileValue(authenticatedUser?.functionName);
   const employeePosition = profileValue(authenticatedUser?.positionName);
   const employeePositionEn = profileValue(authenticatedUser?.positionNameEn);
+  const employeePositionCode = profileValue(authenticatedUser?.positionCode);
   const employeeLevel = profileValue(authenticatedUser?.levelName);
+  const employeeLevelCode = profileValue(authenticatedUser?.levelCode);
+  const employeeLevelEn = profileValue(authenticatedUser?.levelNameEn);
   const employeePl = profileValue(authenticatedUser?.pl);
 
   const [courses, setCourses] = useState<WorkflowCourse[]>([]);
@@ -523,48 +514,11 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
         if (!(existingEntry.isEnded && !candidateEnded)) continue;
       }
 
-      const std = standards.find(
-        (s) =>
-          (s.courseCode && s.courseCode.trim().toLowerCase() === code.trim().toLowerCase()) ||
-          (s.courseId && String(s.courseId) === String(rp.course.id))
-      );
       const masterCourse = courses.find(
         (c) => c.id === rp.course.id || c.courseCode === code
       );
 
       const ownerComp = rp.ownerCompany || rp.company || employeeCompany;
-
-      const courseObj = rp.course as unknown as Record<string, unknown> | undefined;
-      const masterObj = masterCourse as unknown as Record<string, unknown> | undefined;
-      const targetSnapshot = (rp as unknown as { targetSnapshot?: PlanTargetGroupSnapshot }).targetSnapshot;
-
-      const rawPositions =
-        (Array.isArray(targetSnapshot?.targetPositions) && targetSnapshot.targetPositions.length > 0 ? targetSnapshot.targetPositions : undefined)
-        || (Array.isArray(courseObj?.targetPositions) && courseObj.targetPositions.length > 0 ? courseObj.targetPositions : undefined)
-        || (Array.isArray(courseObj?.target_positions) && courseObj.target_positions.length > 0 ? courseObj.target_positions : undefined)
-        || (Array.isArray(masterObj?.targetPositions) && masterObj.targetPositions.length > 0 ? masterObj.targetPositions : undefined)
-        || (Array.isArray(masterObj?.target_positions) && masterObj.target_positions.length > 0 ? masterObj.target_positions : undefined)
-        || (Array.isArray(std?.positions) && std.positions.length > 0 ? std.positions : undefined)
-        || [];
-
-      const rawLevels =
-        (Array.isArray(targetSnapshot?.targetLevels) && targetSnapshot.targetLevels.length > 0 ? targetSnapshot.targetLevels : undefined)
-        || (Array.isArray(courseObj?.targetLevels) && courseObj.targetLevels.length > 0 ? courseObj.targetLevels : undefined)
-        || (Array.isArray(courseObj?.target_levels) && courseObj.target_levels.length > 0 ? courseObj.target_levels : undefined)
-        || (Array.isArray(masterObj?.targetLevels) && masterObj.targetLevels.length > 0 ? masterObj.targetLevels : undefined)
-        || (Array.isArray(masterObj?.target_levels) && masterObj.target_levels.length > 0 ? masterObj.target_levels : undefined)
-        || (Array.isArray(std?.levels) && std.levels.length > 0 ? std.levels : undefined)
-        || [];
-
-      const rawCompanies =
-        (Array.isArray(targetSnapshot?.targetCompanies) && targetSnapshot.targetCompanies.length > 0 ? targetSnapshot.targetCompanies : undefined)
-        || (Array.isArray(courseObj?.targetCompanies) && courseObj.targetCompanies.length > 0 ? courseObj.targetCompanies : undefined)
-        || (Array.isArray(courseObj?.target_companies) && courseObj.target_companies.length > 0 ? courseObj.target_companies : undefined)
-        || (Array.isArray(masterObj?.targetCompanies) && masterObj.targetCompanies.length > 0 ? masterObj.targetCompanies : undefined)
-        || (Array.isArray(masterObj?.target_companies) && masterObj.target_companies.length > 0 ? masterObj.target_companies : undefined)
-        || (Array.isArray(std?.companies) && std.companies.length > 0 ? std.companies : undefined)
-        || (Array.isArray(rp.relatedCompanies) && rp.relatedCompanies.length > 0 ? rp.relatedCompanies : undefined)
-        || [];
 
       const isCenter =
         rp.owner === "CENTER" ||
@@ -572,8 +526,10 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
         (rp.ownerCompany || "").trim().toUpperCase() === "CENTER" ||
         (rp.company || "").trim().toUpperCase() === "ALL COMPANIES" ||
         (rp.course as unknown as Record<string, unknown>)?.owner === "CENTER" ||
-        (masterCourse as unknown as Record<string, unknown>)?.owner === "CENTER" ||
-        (std as unknown as Record<string, unknown>)?.owner === "CENTER";
+        (masterCourse as unknown as Record<string, unknown>)?.owner === "CENTER";
+
+      // Directly resolve exact Rolling Plan Checklist (Snapshot, Course Detail, or Standard)
+      const std = resolveRollingPlanStandard(rp, standards);
 
       const isEnded = candidateEnded;
       const isRollingOpen = !isEnded;
@@ -581,8 +537,12 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
         ? t("เสร็จสิ้นการอบรมแล้ว", "Training ended")
         : t("เปิดรับสมัคร", "Open registration");
 
-      const targetFunctionFromSnapshot = targetSnapshot?.orgScope?.functionName || (courseObj?.orgScope as { functionName?: string } | undefined)?.functionName;
-      const targetFunctions = targetFunctionFromSnapshot ? [targetFunctionFromSnapshot] : (std?.functionName ? [std.functionName] : ["All Function"]);
+      const targetPositions = std?.positions && std.positions.length > 0 ? std.positions : [];
+      const targetLevels = std?.levels && std.levels.length > 0 ? std.levels : [];
+      const targetCompanies = std?.companies && std.companies.length > 0
+        ? std.companies
+        : (isCenter ? ["All Companies"] : [ownerComp]);
+      const targetFunctions = std?.functionName ? [std.functionName] : ["All Function"];
 
       itemMap.set(code, {
         id: rp.rollingId,
@@ -596,11 +556,11 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
         courseType: rp.course.courseType || masterCourse?.courseType || notSpecified,
         ownerCompany: isCenter ? "CENTER" : ownerComp,
         courseOwner: isCenter ? "CENTER" : "FACTORY",
-        targetGroupDesc: targetSnapshot?.targetGroup || rp.course.targetGroup || masterCourse?.targetGroup || t("พนักงานระดับบังคับบัญชาและระดับปฏิบัติการที่เกี่ยวข้อง", "Targeted Employees & Related Groups"),
-        targetCompanies: (rawCompanies.length > 0) ? rawCompanies : (isCenter ? ["All Companies"] : [ownerComp]),
+        targetGroupDesc: std?.targetGroup || rp.course.targetGroup || masterCourse?.targetGroup || "-",
+        targetCompanies,
         targetFunctions,
-        targetPositions: (rawPositions.length > 0) ? rawPositions : ["All Positions"],
-        targetLevels: (rawLevels.length > 0) ? rawLevels : ["All Levels"],
+        targetPositions: targetPositions.length > 0 ? targetPositions : ["All Positions"],
+        targetLevels: targetLevels.length > 0 ? targetLevels : ["All Levels"],
         round: rp.batch || "-",
         trainingDate: rp.trainingDate || "-",
         trainingStatus,
@@ -621,9 +581,11 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
       });
     }
 
-    // 4. Compute matching & visibility for each item (Only specifically targeted courses)
+    // 4. Compute matching & visibility for each item strictly from Rolling checklist position & level
     return Array.from(itemMap.values()).map((item) => {
       const isCenter = item.courseOwner === "CENTER";
+
+      // 1. Company matching
       const isCompanyTargeted = isCenter
         ? (item.targetCompanies.length === 0 || item.targetCompanies.some((c) => {
             const normC = c.trim().toUpperCase();
@@ -651,45 +613,88 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
               );
             }));
 
-      const matchPosition = isTargetMatch(
+      // 2. Function / Department matching
+      const isAllFunction =
+        item.targetFunctions.length === 0 ||
+        item.targetFunctions.some((fn) => {
+          const normFn = fn.trim().toLowerCase();
+          return normFn === "" || normFn === "all" || normFn.includes("all function") || normFn === "ทุกฝ่ายงาน";
+        });
+
+      const matchFunction = isAllFunction || item.targetFunctions.some((targetFn) => {
+        const clean = (s: string) => s.toLowerCase().replace(/[\s\.\(\)\-_'"]/g, "");
+        const cleanTarget = clean(targetFn);
+        const cleanUserFn = clean(employeeFunction || "");
+        return Boolean(cleanUserFn && cleanTarget && (cleanUserFn.includes(cleanTarget) || cleanTarget.includes(cleanUserFn)));
+      });
+
+      // 3. Position & Level matching directly from Checklist
+      const hasPositions = item.targetPositions.length > 0 && !item.targetPositions.every((p) => /^(all|all positions|ทุกตำแหน่ง|-)$/i.test(p.trim()));
+      const hasLevels = item.targetLevels.length > 0 && !item.targetLevels.every((l) => /^(all|all levels|ทุกระดับ|-)$/i.test(l.trim()));
+
+      const isPositionMatched = hasPositions && isTargetMatch(
         item.targetPositions,
-        [employeePosition, employeePositionEn],
+        [employeePosition, employeePositionEn, employeePositionCode],
         false,
         true,
-        item.targetGroupDesc
       );
-      const matchLevel = isTargetMatch(
+
+      const isLevelMatched = hasLevels && isTargetMatch(
         item.targetLevels,
-        [employeeLevel, employeePl],
+        [employeeLevel, employeeLevelCode, employeeLevelEn, employeePl],
         true,
-        false
-      );
-      const matchFunction = isTargetMatch(
-        item.targetFunctions,
-        employeeFunction
+        false,
       );
 
-      // For Center courses: if it's open to all positions/levels or not restricted, it is a general Center mandatory course for everyone!
-      const isGeneralCenterCourse = isCenter && (
-        item.targetPositions.length === 0 ||
-        item.targetPositions.some((p) => /all|ทุกตำแหน่ง|พนักงานทุกกลุ่ม|พนักงานทุกคน/i.test(p))
-      );
+      // Match categorization:
+      // 1. Level กับ Position ตรงกัน (หรือคอร์สกำหนดแค่อย่างใดอย่างหนึ่งแล้วตรง) -> ตรงกลุ่มเป้าหมาย (isExactTargetMatch)
+      // 2. ตรงกับ Level แต่ไม่ตรง Position -> ตรงกับ Level (isLevelOnlyMatch)
+      // 3. ตรงกับ Position แต่ไม่ตรง Level -> ตรงกับ Position (isPositionOnlyMatch)
+      // 4. ไม่ได้จำกัด Position และ Level -> หลักสูตรทั่วไป (isGeneralCourse)
+      let isExactTargetMatch = false;
+      let isLevelOnlyMatch = false;
+      let isPositionOnlyMatch = false;
+      let isGeneralCourse = false;
 
-      // Course is relevant if Company matches AND (Position matches OR Level matches OR Function matches OR isGeneralCenterCourse)
-      const isRelevantForRoadmap = isCompanyTargeted && (matchPosition || matchLevel || matchFunction || isGeneralCenterCourse);
-      const isBothPositionAndLevelMatch = matchPosition && matchLevel && isCompanyTargeted;
+      if (hasPositions && hasLevels) {
+        if (isPositionMatched && isLevelMatched) {
+          isExactTargetMatch = true;
+        } else if (isLevelMatched && !isPositionMatched) {
+          isLevelOnlyMatch = true;
+        } else if (isPositionMatched && !isLevelMatched) {
+          isPositionOnlyMatch = true;
+        }
+      } else if (hasPositions) {
+        if (isPositionMatched) {
+          isExactTargetMatch = true;
+        }
+      } else if (hasLevels) {
+        if (isLevelMatched) {
+          isExactTargetMatch = true;
+        }
+      } else {
+        isGeneralCourse = true;
+      }
+
+      // Course is relevant if Company and Function match, AND either exact, level-only, position-only, or general course
+      const isRelevantForRoadmap = isCompanyTargeted && matchFunction && (
+        isExactTargetMatch || isLevelOnlyMatch || isPositionOnlyMatch || isGeneralCourse
+      );
 
       return {
         ...item,
         isCompanyTargeted,
-        matchPosition,
-        matchLevel,
+        matchPosition: isPositionMatched,
+        matchLevel: isLevelMatched,
         matchFunction,
-        isBothPositionAndLevelMatch,
+        isExactTargetMatch,
+        isLevelOnlyMatch,
+        isPositionOnlyMatch,
+        isGeneralCourse,
         isRelevantForRoadmap,
       };
     });
-  }, [courses, employeeCompany, employeeCompanyName, employeeFunction, employeeLevel, employeePl, employeePosition, employeePositionEn, enrollments, rollingPlans, standards, t]);
+  }, [courses, employeeCompany, employeeCompanyName, employeeFunction, employeeLevel, employeeLevelCode, employeeLevelEn, employeePl, employeePosition, employeePositionCode, employeePositionEn, enrollments, rollingPlans, standards, t]);
 
   // Filter items based on selected scope tab, category group, search query, and availability
   const filteredRoadmapItems = useMemo(() => {
@@ -1035,7 +1040,7 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
               <Briefcase size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> Position: <strong>{toEnglishText(employeePosition)}</strong>
             </span>
             <span className={styles.profileBadgeItem}>
-              <Star size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> Level: <strong>{toEnglishText(employeeLevel)}</strong>
+              <Star size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> Level: <strong>{normalizeEmployeeLevel(employeeLevelCode || employeeLevel) || toEnglishText(employeeLevel)}</strong>
             </span>
           </div>
         </div>
@@ -1166,26 +1171,26 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
                   </span>
                   <span className={styles.categoryPill}>{item.category}</span>
 
-                  {/* Target Match Badge */}
-                  {item.isBothPositionAndLevelMatch ? (
+                  {/* Target Match Badge according to user rules */}
+                  {item.isExactTargetMatch ? (
                     <span className={`${styles.targetMatchPill} ${styles.exactTargetPill}`}>
                       <Target size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-                      Direct Target Match
+                      {t("ตรงกลุ่มเป้าหมาย", "Direct Target Match")}
                     </span>
-                  ) : item.matchLevel ? (
+                  ) : item.isLevelOnlyMatch ? (
                     <span className={`${styles.targetMatchPill} ${styles.levelMatchPill}`}>
                       <Star size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-                      Level Match: {toEnglishText(employeeLevel)}
+                      {t("ตรงกับ Level", `Level Match: ${normalizeEmployeeLevel(employeeLevelCode || employeeLevel) || toEnglishText(employeeLevel)}`)}
                     </span>
-                  ) : item.matchPosition ? (
+                  ) : item.isPositionOnlyMatch ? (
                     <span className={`${styles.targetMatchPill} ${styles.positionMatchPill}`}>
                       <Briefcase size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-                      Position Match: {toEnglishText(employeePosition)}
+                      {t("ตรงกับ Position", `Position Match: ${toEnglishText(employeePosition)}`)}
                     </span>
                   ) : (
                     <span className={`${styles.targetMatchPill} ${styles.generalMatchPill}`}>
                       <Building2 size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-                      General Course
+                      {t("หลักสูตรทั่วไป", "General Course")}
                     </span>
                   )}
                 </div>

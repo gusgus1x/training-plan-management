@@ -802,7 +802,7 @@ const pageWindow = (current: number, totalPages: number) => {
   return { start, end };
 };
 
-const resolveRollingPlanStandard = (plan: RollingPlan, standards: WorkflowStandard[]) => {
+export const resolveRollingPlanStandard = (plan: RollingPlan, standards: WorkflowStandard[]) => {
   const snapshot = plan.targetSnapshot || (plan as unknown as { targetSnapshot?: PlanTargetGroupSnapshot }).targetSnapshot;
   const courseAny = plan.course as unknown as {
     targetPositions?: string[];
@@ -850,14 +850,24 @@ const resolveRollingPlanStandard = (plan: RollingPlan, standards: WorkflowStanda
   }
 
   const planYear = plan.trainingDate ? parseInt(plan.trainingDate.slice(0, 4), 10) : undefined;
+  const planCourseId = plan.course?.id ? String(plan.course.id).trim() : "";
+  const planCourseCode = plan.course?.code ? plan.course.code.trim().toLowerCase() : "";
+
   if (planYear) {
     const yearMatched = standards.find(
-      (item) => item.courseId === plan.course?.id && (item as unknown as { standardYear?: number }).standardYear === planYear,
+      (item) =>
+        ((item.courseId && planCourseId && String(item.courseId).trim() === planCourseId) ||
+         (item.courseCode && planCourseCode && item.courseCode.trim().toLowerCase() === planCourseCode)) &&
+        (item as unknown as { standardYear?: number }).standardYear === planYear,
     );
     if (yearMatched) return { ...yearMatched, isSnapshot: false };
   }
 
-  const courseMatched = standards.find((item) => item.courseId === plan.course?.id);
+  const courseMatched = standards.find(
+    (item) =>
+      (item.courseId && planCourseId && String(item.courseId).trim() === planCourseId) ||
+      (item.courseCode && planCourseCode && item.courseCode.trim().toLowerCase() === planCourseCode),
+  );
   if (courseMatched) return { ...courseMatched, isSnapshot: false };
 
   return null;
